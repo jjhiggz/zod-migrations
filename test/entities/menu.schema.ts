@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { JSON_EVOLUTION } from "../../zod-evolution";
+import { JsonEvolver } from "../../zod-evolution";
 import type { Equals } from "../../types/Equals";
 
 const menuSchema = z.object({
@@ -7,7 +7,7 @@ const menuSchema = z.object({
   age: z.number(),
 });
 
-export const menuEvoSchema = new JSON_EVOLUTION()
+export const menuEvoSchema = new JsonEvolver()
   .add({
     path: "name",
     schema: z.string(),

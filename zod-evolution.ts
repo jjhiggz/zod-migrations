@@ -6,15 +6,15 @@ type FillableObject = Merge<{}, {}>;
 
 const zevoVersionTag = "_zevo_version";
 
-export class JSON_EVOLUTION<Shape extends FillableObject> {
+export class JsonEvolver<Shape extends FillableObject> {
   zevo_version: number;
   transforms: ((input: any) => any)[] = [];
-  nestedPaths: [NestedKeyOf<Shape>, JSON_EVOLUTION<any>][] = [];
+  nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][] = [];
 
   constructor(input?: {
     _zevo_version: number;
     transforms: ((input: any) => any)[];
-    nestedPaths: [NestedKeyOf<Shape>, JSON_EVOLUTION<any>][];
+    nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][];
   }) {
     if (input) {
       const { _zevo_version = 1, transforms } = input;
@@ -29,7 +29,7 @@ export class JSON_EVOLUTION<Shape extends FillableObject> {
   }
 
   next = <NewShape extends FillableObject>() => {
-    return new JSON_EVOLUTION<NewShape>({
+    return new JsonEvolver<NewShape>({
       _zevo_version: this.zevo_version + 1,
       transforms: this.transforms,
       // @ts-ignore
@@ -98,7 +98,7 @@ export class JSON_EVOLUTION<Shape extends FillableObject> {
 
   register = <T extends FillableObject>(
     key: NestedKeyOf<Shape>,
-    jsonEvolution: JSON_EVOLUTION<T>
+    jsonEvolution: JsonEvolver<T>
   ) => {
     this.nestedPaths.push([key, jsonEvolution]);
     return this.next<Shape>();

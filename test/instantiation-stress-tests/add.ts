@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { JSON_EVOLUTION } from "../../zod-evolution";
+import { JsonEvolver } from "../../zod-evolution";
 import type { Equals } from "../../types/Equals";
 
 export const dumbSchema = z.object({
@@ -114,7 +114,7 @@ export const dumbSchema = z.object({
   field109: z.string(),
 });
 
-const dumbEvoSchema = new JSON_EVOLUTION()
+const dumbEvoSchema = new JsonEvolver()
   .add({
     path: "field1",
     defaultVal: "",

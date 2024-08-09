@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { menuEvoSchema, safeMenuSchema } from "./menu.schema";
-import { JSON_EVOLUTION } from "../../zod-evolution";
+import { JsonEvolver } from "../../zod-evolution";
 import type { Equals } from "../../types/Equals";
 
 const restaurantSchema = z.object({
@@ -13,7 +13,7 @@ const restaurantWithChildrenSchema = restaurantSchema.merge(
   })
 );
 
-export const restaurantWithChildrenEvoSchema = new JSON_EVOLUTION()
+export const restaurantWithChildrenEvoSchema = new JsonEvolver()
   .add({
     path: "name",
     schema: z.string(),
