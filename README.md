@@ -2,6 +2,8 @@
 
 JSON Evolver is like migrations but for your zod schemas.
 
+The idea for this library came from [This Article](https://www.inkandswitch.com/cambria/). If you're interested in the differences between this and Cambria, I've written a little bit about that [here](#differences-between-this-and-cambria).
+
 ## The Problem This Solves
 
 The problem with unstructured data is that our business logic is often tied to the structure of the data, even if that structure is not enforced by the database. This means that when the structure of the data changes, we need to update our business logic to match. This can be a pain, especially if the data is being used in multiple places in our codebase.
@@ -40,7 +42,7 @@ function PersonCard({ person }: { person: Person }) {
 }
 ```
 
-Now let's say our dickhead boss says that we need to add a `phone` field to the `Person` object. And we need to change having a name to having a first name and a last name.
+Now let's say our boss says that we need to add a `phone` field to the `Person` object. And we need to change having a name to having a first name and a last name.
 
 Now our `Person` object looks like this:
 
@@ -397,3 +399,69 @@ const evoSchema = new JSON_EVOLUTION()
     splitBy: splitter,
   });
 ```
+
+## Differences Between This and Cambria
+
+Cambria is a library for defining transformations, this is a library for defining transformations. The difference is with JSON Evolver you define your transformations using zod schemas, which is a library for defining schemas. This means that you can use the same schema to validate your data and transform it.
+
+This means:
+
+1. You can use the same schema to validate your data and transform it
+2. Everything is done as code, so you don't have to set up a build step
+
+### How Cambria Tracks Changes
+
+Cambria tracks changes by using a graph data structure to represent the shape of the data. This is a very powerful way to track changes, but it is also very complex.
+
+The Pros:
+
+- Cambria doesn't need to use tags to know which transformations to skip
+- Cambria can track changes to nested objects very smoothly
+- Allows you to do more powerful changes
+
+For example you can do shit like this very smoothly in Cambria
+
+go from this
+
+```json
+{
+  "name": "jon",
+  "stuff": {
+    "age": 1,
+    "graduationYear": 2011
+  }
+}
+```
+
+to this with one migration
+
+```json
+{
+  "name": "jon",
+  "age": 1,
+  "graduationYear": 2011
+}
+```
+
+The Cons:
+
+- Cambria doesn't output a static type
+- Barely anybody uses Cambria (as of writing this, same as my library btw)
+
+## How JSON Evolver Tracks Changes
+
+JSON Evolver uses a much simpler approach to track changes, which is to apply a series of transformations to the data, then run those transformations back and forth to get the final result. But in order to know which changes to skip, it tags the data with a version number.
+
+The Pros:
+
+- JSON Evolver outputs a static type
+- JSON Evolver may be simpler to understand
+- The thought process is similar to up/down migrations
+- Allows you to think of nested schemas as objects that evolve independently
+
+_note: this may not always be a good thing, but in my case, since I'm using this to sync JSON with SQL tables, I think it's a good thing_
+
+The Cons:
+
+- Although it can track changes to nested objects, my guess is that it's not nearly as smooth
+- Some Schema changes may still result in breaking changes (For example, I haven't tested aggressivly with changing nested schemas)
