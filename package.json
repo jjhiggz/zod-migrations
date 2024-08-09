@@ -1,0 +1,18 @@
+{
+  "name": "zod-evo",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "ts-toolbelt": "^9.6.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/graphlib": "^2.1.12",
+    "fast-json-patch": "^3.1.1",
+    "graphlib": "^2.1.8",
+    "zod": "^3.23.8"
+  }
+}
