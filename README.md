@@ -419,7 +419,7 @@ The Pros:
 - Cambria can track changes to nested objects very smoothly
 - Allows you to do more powerful changes
 
-For example you can do shit like this very smoothly in Cambria
+For example you can do things like this very smoothly in Cambria
 
 go from this
 
