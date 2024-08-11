@@ -359,7 +359,7 @@ const evoSchema = new JSON_EVOLUTION()
   });
 ```
 
-2. Remove a field
+2. Remove a field (done)
 
 ```ts
 const evoSchema = new JSON_EVOLUTION()

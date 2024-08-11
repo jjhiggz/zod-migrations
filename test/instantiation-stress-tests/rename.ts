@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { JsonEvolver } from "../../zod-evolution";
+import { JsonEvolver } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
 
 export const dumbSchema = z.object({
