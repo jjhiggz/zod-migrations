@@ -1,8 +1,12 @@
-import { z, ZodSchema } from "zod";
+import { z, ZodObject, ZodSchema } from "zod";
 import type { ObjectWith } from "./types/ObjectWith";
 import { type Merge } from "ts-toolbelt/out/Object/Merge";
 import type { NestedKeyOf } from "./types/NestedKeyOf";
 type FillableObject = Merge<{}, {}>;
+
+export type GetJsonEvolverShape<T extends JsonEvolver<any>> = ReturnType<
+  T["transform"]
+>;
 
 export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 export const versionTag = "__json_evolver_version";
@@ -182,5 +186,12 @@ export class JsonEvolver<Shape extends FillableObject> {
     this.versions = this.versions.set(version, this.schemaEvolutionCount);
 
     return this;
+  };
+
+  safeSchema = (schema: ZodSchema<Shape, any, any>) => {
+    return z.preprocess(
+      this.transform,
+      (schema as any).passthrough() as typeof schema
+    );
   };
 }

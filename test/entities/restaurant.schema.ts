@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { menuEvoSchema, safeMenuSchema } from "./menu.schema";
-import { JsonEvolver } from "../../json-evolution";
+import { JsonEvolver, type GetJsonEvolverShape } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
 
 const restaurantSchema = z.object({
@@ -35,7 +35,11 @@ const checkEvoTypeRestaurant = (): 1 => {
   >;
 };
 
-export const safeRestaurantSchema = z.preprocess((input) => {
-  const output = restaurantWithChildrenEvoSchema.transform(input);
-  return output;
-}, restaurantWithChildrenSchema.passthrough());
+// export const safeRestaurantSchema = z.preprocess((input) => {
+//   const output = restaurantWithChildrenEvoSchema.transform(input);
+//   return output;
+// }, restaurantWithChildrenSchema.passthrough());
+
+export const safeRestaurantSchema = restaurantWithChildrenEvoSchema.safeSchema(
+  restaurantWithChildrenSchema
+);

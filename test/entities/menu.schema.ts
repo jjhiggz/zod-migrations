@@ -2,7 +2,7 @@ import { z } from "zod";
 import { JsonEvolver } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
 
-const menuSchema = z.object({
+export const menuSchema = z.object({
   name: z.string(),
   age: z.number(),
 });
@@ -28,4 +28,4 @@ const checkEvoTypeMenu = (): 1 => {
 
 export const safeMenuSchema = z.preprocess((input) => {
   return menuEvoSchema.transform(input);
-}, menuSchema.passthrough());
+}, menuSchema);
