@@ -4,37 +4,43 @@ import { type Merge } from "ts-toolbelt/out/Object/Merge";
 import type { NestedKeyOf } from "./types/NestedKeyOf";
 type FillableObject = Merge<{}, {}>;
 
-export const zevoVersionTag = "_zevo_version";
+export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
+export const versionTag = "__json_evolver_version";
 
 export class JsonEvolver<Shape extends FillableObject> {
-  zevo_version: number;
+  schemaEvolutionCount: number;
   transforms: ((input: any) => any)[] = [];
   paths: string[] = [];
   nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][] = [];
+  // Which tags correspond with which
+  versions: Map<number, number> = new Map();
 
   constructor(input?: {
-    _zevo_version: number;
+    schemaEvolutionCount: number;
     transforms: ((input: any) => any)[];
     nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][];
     paths: string[];
+    tags: Map<number, number>;
   }) {
     if (input) {
-      const { _zevo_version = 1, transforms, paths } = input;
-      this.zevo_version = _zevo_version;
+      const { schemaEvolutionCount = 1, transforms, paths } = input;
+      this.schemaEvolutionCount = schemaEvolutionCount;
       this.transforms = transforms;
       this.nestedPaths = input.nestedPaths;
       this.paths = paths;
+      this.versions = input.tags;
     } else {
       this.transforms = [];
-      this.zevo_version = 0;
+      this.schemaEvolutionCount = 0;
       this.nestedPaths = [];
       this.paths = [];
+      this.versions = new Map();
     }
   }
 
   next = <NewShape extends FillableObject>() => {
     return new JsonEvolver<NewShape>({
-      _zevo_version: this.zevo_version + 1,
+      schemaEvolutionCount: this.schemaEvolutionCount + 1,
       transforms: this.transforms,
       // @ts-ignore
       nestedPaths: this.nestedPaths,
@@ -56,8 +62,8 @@ export class JsonEvolver<Shape extends FillableObject> {
     } else this.paths.push(path);
 
     const transform = (input: any) => {
-      const zevoVersion = input[zevoVersionTag];
-      if (zevoVersion >= this.zevo_version) {
+      const zevoVersion = input[schemaEvolutionCountTag];
+      if (zevoVersion >= this.schemaEvolutionCount) {
         return input;
       }
       const result = schema.safeParse(input[path]);
@@ -90,8 +96,8 @@ export class JsonEvolver<Shape extends FillableObject> {
     }
 
     const transform = (input: any) => {
-      const zevoVersion = input[zevoVersionTag];
-      if (zevoVersion >= this.zevo_version) {
+      const zevoVersion = input[schemaEvolutionCountTag];
+      if (zevoVersion >= this.schemaEvolutionCount) {
         return input;
       }
       input[destination] = input[source];
@@ -111,8 +117,8 @@ export class JsonEvolver<Shape extends FillableObject> {
     this.paths = this.paths.filter((pathName) => pathName !== source);
 
     const transform = (input: any) => {
-      const zevoVersion = input[zevoVersionTag];
-      if (zevoVersion >= this.zevo_version) {
+      const zevoVersion = input[schemaEvolutionCountTag];
+      if (zevoVersion >= this.schemaEvolutionCount) {
         return input;
       }
       delete input[source];
@@ -157,14 +163,27 @@ export class JsonEvolver<Shape extends FillableObject> {
       const fullObject = Object.fromEntries([...entries]);
 
       if (path.length === 0) {
-        fullObject[zevoVersionTag] = this.zevo_version;
+        fullObject[schemaEvolutionCountTag] = this.schemaEvolutionCount;
         return JSON.stringify(fullObject, null, 2);
       } else if (registeredPath) {
-        fullObject[zevoVersionTag] = registeredPath[1].zevo_version;
+        fullObject[schemaEvolutionCountTag] =
+          registeredPath[1].schemaEvolutionCount;
         return fullObject;
       }
     }
 
     return input;
+  };
+
+  releaseVersion = (version: number) => {
+    const maxVersion = Math.max(...this.versions.keys());
+
+    if (version < maxVersion) {
+      throw new Error(`Please use a version greater than ${maxVersion}`);
+    }
+
+    this.versions = this.versions.set(version, this.schemaEvolutionCount);
+
+    return this;
   };
 }

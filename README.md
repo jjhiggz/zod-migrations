@@ -386,6 +386,41 @@ const evoSchema = new JSON_EVOLUTION()
   });
 ```
 
+3. Backwards Transformations
+
+Right now transforms only go forward, but in theory there's a use case to have backwards transforms as well. In other words, if this is to be used in distributed systems, it's possible that you might want to transform data back to a previous version from a newer version as well.
+
+It may be nice for some folks to have something like this available:
+
+```ts
+const evoSchema = new JSON_EVOLUTION()
+  .add({
+    name: "name",
+    schema: z.string(),
+    default: "",
+  })
+  .add({
+    name: "age",
+    schema: z.number(),
+    default: 0,
+  })
+  .remove("age")
+  .upTo(2);
+```
+
+This would represent the json evolver before age got removed. Then your transformer would take a version 3 object and transform it back to a version 2 object.
+
+```json
+{
+  "name": "Jon"
+}
+// Turns into
+{
+  "name": "Jon",
+  "age": 0
+}
+```
+
 ## Differences Between This and Cambria
 
 Cambria is a library for defining transformations, this is a library for defining transformations. The difference is with JSON Evolver you define your transformations using zod schemas, which is a library for defining schemas. This means that you can use the same schema to validate your data and transform it.
