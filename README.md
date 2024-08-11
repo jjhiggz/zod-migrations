@@ -359,21 +359,7 @@ const evoSchema = new JSON_EVOLUTION()
   });
 ```
 
-2. Remove a field (done)
-
-```ts
-const evoSchema = new JSON_EVOLUTION()
-  .add({
-    name: "status",
-    schema: z.enum("active", "inactive", "poorly-named"),
-    default: "inactive",
-  })
-  .remove({
-    path: "status",
-  });
-```
-
-3. Add splitting transformation
+2. Add splitting transformation
 
 ```ts
 const splitter = (firstName) => {
