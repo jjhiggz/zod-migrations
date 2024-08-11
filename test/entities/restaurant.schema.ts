@@ -35,11 +35,6 @@ const checkEvoTypeRestaurant = (): 1 => {
   >;
 };
 
-// export const safeRestaurantSchema = z.preprocess((input) => {
-//   const output = restaurantWithChildrenEvoSchema.transform(input);
-//   return output;
-// }, restaurantWithChildrenSchema.passthrough());
-
 export const safeRestaurantSchema = restaurantWithChildrenEvoSchema.safeSchema(
   restaurantWithChildrenSchema
 );

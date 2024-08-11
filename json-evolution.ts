@@ -1,7 +1,6 @@
-import { z, ZodObject, ZodSchema } from "zod";
+import { z, ZodSchema } from "zod";
 import type { ObjectWith } from "./types/ObjectWith";
 import { type Merge } from "ts-toolbelt/out/Object/Merge";
-import type { NestedKeyOf } from "./types/NestedKeyOf";
 type FillableObject = Merge<{}, {}>;
 
 export type GetJsonEvolverShape<T extends JsonEvolver<any>> = ReturnType<
@@ -15,15 +14,18 @@ export class JsonEvolver<Shape extends FillableObject> {
   schemaEvolutionCount: number;
   transforms: ((input: any) => any)[] = [];
   paths: string[] = [];
-  nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][] = [];
+  nestedPaths: [keyof Shape, JsonEvolver<any>][] = [];
   // Which tags correspond with which
   versions: Map<number, number> = new Map();
   transformsAppliedCount: number = 0;
 
+  /**
+   * You probably don't need to use this but it's important internally
+   */
   constructor(input?: {
     schemaEvolutionCount: number;
     transforms: ((input: any) => any)[];
-    nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][];
+    nestedPaths: [keyof Shape, JsonEvolver<any>][];
     paths: string[];
     tags: Map<number, number>;
   }) {
@@ -78,10 +80,7 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this.next<Shape & ObjectWith<Path, typeof defaultVal>>();
   };
 
-  rename = <
-    SourceKey extends NestedKeyOf<Shape>,
-    DestinationKey extends string
-  >({
+  rename = <SourceKey extends keyof Shape, DestinationKey extends string>({
     source,
     destination,
   }: {
@@ -91,7 +90,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     this.paths = this.paths.filter((pathName) => pathName !== source);
     if (this.paths.includes(destination)) {
       throw new Error(
-        `Cannot rename '${source}' to  '${destination}' because it already exists in your schema`
+        `Cannot rename '${
+          source as string
+        }' to  '${destination}' because it already exists in your schema`
       );
     } else {
       this.paths.push(destination);
@@ -111,7 +112,7 @@ export class JsonEvolver<Shape extends FillableObject> {
     >();
   };
 
-  remove = <SourceKey extends NestedKeyOf<Shape>>(source: SourceKey) => {
+  remove = <SourceKey extends keyof Shape>(source: SourceKey) => {
     this.paths = this.paths.filter((pathName) => pathName !== source);
 
     const transform = (input: any) => {
@@ -139,7 +140,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   };
 
   register = <T extends FillableObject>(
-    key: NestedKeyOf<Shape>,
+    key: keyof Shape,
     jsonEvolution: JsonEvolver<T>
   ) => {
     this.nestedPaths.push([key, jsonEvolution]);
@@ -195,3 +196,13 @@ export class JsonEvolver<Shape extends FillableObject> {
     );
   };
 }
+
+const test = z.object({
+  name: z.string(),
+});
+
+export const createJsonEvolver = <T extends {}>(
+  _input: { schema: ZodSchema<T> } | { initialShape: T }
+) => {
+  return new JsonEvolver<T>();
+};

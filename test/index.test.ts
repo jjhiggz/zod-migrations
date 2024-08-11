@@ -1,7 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { JsonEvolver } from "../json-evolution";
+import { createJsonEvolver, JsonEvolver } from "../json-evolution";
 import { z } from "zod";
-import type { Equals } from "../types/Equals";
+
+const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 
 const createEvolver = () =>
   new JsonEvolver()
@@ -172,5 +173,56 @@ describe("transform counts", () => {
     const evolver = createEvolver();
     evolver.transform({ name: "jon" });
     expect(evolver.transformsAppliedCount).toBe(2);
+  });
+
+  it("should appropriately tag the schema when starting with schema", () => {
+    const evolver = createJsonEvolver({
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const stringified = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    expect(stringified[schemaEvolutionCountTag]).toBe(0);
+
+    const evolver2 = evolver.add({
+      path: "lastName",
+      defaultVal: "",
+      schema: z.string(),
+    });
+
+    const stringified2 = JSON.parse(
+      evolver2.stringify({ name: "jon", age: 30 })
+    );
+
+    expect(stringified2[schemaEvolutionCountTag]).toBe(1);
+  });
+
+  it("should apply relevant transforms only when starting from a schema", () => {
+    const evolver = createJsonEvolver({
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const stringified = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    const evolver2 = evolver
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "lastName",
+        defaultVal: "",
+        schema: z.string(),
+      });
+
+    evolver2.transform(stringified);
+
+    expect(evolver2.transformsAppliedCount).toBe(2);
   });
 });
