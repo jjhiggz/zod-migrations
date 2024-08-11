@@ -146,7 +146,7 @@ describe("transform counts", () => {
 
     evolver.transform(result);
 
-    expect(evolver.transformsAppliedCount).toBe(0);
+    expect(evolver.__get_private_data().transformsAppliedCount).toBe(0);
   });
 
   it("should apply remaining transforms when changed", () => {
@@ -166,13 +166,13 @@ describe("transform counts", () => {
 
     evolver2.transform(result);
 
-    expect(evolver2.transformsAppliedCount).toBe(2);
+    expect(evolver2.__get_private_data().transformsAppliedCount).toBe(2);
   });
 
   it("should apply all transforms no matter what if not from stringified entities", () => {
     const evolver = createEvolver();
     evolver.transform({ name: "jon" });
-    expect(evolver.transformsAppliedCount).toBe(2);
+    expect(evolver.__get_private_data().transformsAppliedCount).toBe(2);
   });
 
   it("should appropriately tag the schema when starting with schema", () => {
@@ -223,6 +223,14 @@ describe("transform counts", () => {
 
     evolver2.transform(stringified);
 
-    expect(evolver2.transformsAppliedCount).toBe(2);
+    expect(evolver2.__get_private_data().transformsAppliedCount).toBe(2);
   });
 });
+
+function testSafeSchemaReturnType(): 1 {
+  const restaurantSchema = z.object({
+    name: z.string(),
+  });
+
+  const evoSchema = createEvolver({ schema: restaurantSchema }).add();
+}

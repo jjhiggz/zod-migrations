@@ -11,23 +11,46 @@ export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 export const versionTag = "__json_evolver_version";
 
 export class JsonEvolver<Shape extends FillableObject> {
-  schemaEvolutionCount: number;
-  transforms: ((input: any) => any)[] = [];
-  paths: string[] = [];
-  nestedPaths: [keyof Shape, JsonEvolver<any>][] = [];
-  // Which tags correspond with which
-  versions: Map<number, number> = new Map();
-  transformsAppliedCount: number = 0;
+  /**
+   * The amount of evolutions the schema has had since the beginning
+   */
+  private schemaEvolutionCount: number;
 
   /**
-   * You probably don't need to use this but it's important internally
+   * The transforms for this schema
+   */
+  private transforms: ((input: any) => any)[] = [];
+
+  /**
+   * The paths that are registered according to your schema count
+   */
+  private paths: string[] = [];
+
+  /**
+   * An array of tuples of the registered nested paths
+   */
+  private nestedPaths: [keyof Shape, JsonEvolver<any>][] = [];
+
+  /**
+   * A map of all the versions. Each version maps to a `schemaEvolutionCount` so that way we
+   * know which ones to skip per version
+   */
+  private versions: Map<number, number> = new Map();
+
+  /**
+   * For use in testing to see how many transforms were applied to generate the schema
+   */
+  private transformsAppliedCount: number = 0;
+
+  /**
+   * You probably don't need to use this but it's important internally to create new instances
    */
   constructor(input?: {
     schemaEvolutionCount: number;
     transforms: ((input: any) => any)[];
     nestedPaths: [keyof Shape, JsonEvolver<any>][];
     paths: string[];
-    tags: Map<number, number>;
+    versions: Map<number, number>;
   }) {
     if (input) {
       const { schemaEvolutionCount = 1, transforms, paths } = input;
@@ -35,7 +58,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       this.transforms = transforms;
       this.nestedPaths = input.nestedPaths;
       this.paths = paths;
-      this.versions = input.tags;
+      this.versions = input.versions;
     } else {
       this.transforms = [];
       this.schemaEvolutionCount = 0;
@@ -46,6 +69,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     }
   }
 
+  /**
+   * Returns the next instance in the chain... See [Fluent Interfaces](https://en.wikipedia.org/wiki/Fluent_interface)
+   */
   next = <NewShape extends FillableObject>() => {
     return new JsonEvolver<NewShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
@@ -53,9 +79,13 @@ export class JsonEvolver<Shape extends FillableObject> {
       // @ts-ignore
       nestedPaths: this.nestedPaths,
       paths: this.paths,
+      versions: this.versions,
     });
   };
 
+  /**
+   * Adds a key to your schema
+   */
   add = <S extends ZodSchema, Path extends string>({
     path,
     schema,
@@ -80,6 +110,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this.next<Shape & ObjectWith<Path, typeof defaultVal>>();
   };
 
+  /**
+   * Renames a key in your schema
+   */
   rename = <SourceKey extends keyof Shape, DestinationKey extends string>({
     source,
     destination,
@@ -112,6 +145,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     >();
   };
 
+  /**
+   * Removes a key from your schema
+   */
   remove = <SourceKey extends keyof Shape>(source: SourceKey) => {
     this.paths = this.paths.filter((pathName) => pathName !== source);
 
@@ -125,8 +161,11 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this.next<Omit<Shape, SourceKey>>();
   };
 
+  /**
+   * Transform any previous version of your data into the most modern form
+   */
   transform = (input: any): Shape => {
-    const zevoVersion = input[schemaEvolutionCountTag];
+    const zevoVersion = input[schemaEvolutionCountTag] ?? 0;
 
     const forwardTransforms = zevoVersion
       ? this.transforms.slice(zevoVersion)
@@ -139,6 +178,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     return input;
   };
 
+  /**
+   * register a nested schema
+   */
   register = <T extends FillableObject>(
     key: keyof Shape,
     jsonEvolution: JsonEvolver<T>
@@ -147,6 +189,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this.next<Shape>();
   };
 
+  /**
+   * stringify your schema for when you store it in your database
+   */
   stringify = (rawInput: any, path: string[] = []): any => {
     const input = structuredClone(rawInput);
 
@@ -177,6 +222,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     return input;
   };
 
+  /**
+   * release a version of your schema
+   */
   releaseVersion = (version: number) => {
     const maxVersion = Math.max(...this.versions.keys());
 
@@ -189,6 +237,20 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this;
   };
 
+  __get_private_data() {
+    return {
+      schemaEvolutionCount: this.schemaEvolutionCount,
+      transforms: this.transforms,
+      paths: this.paths,
+      nestedPaths: this.nestedPaths,
+      versions: this.versions,
+      transformsAppliedCount: this.transformsAppliedCount,
+    };
+  }
+
+  /**
+   * create a safe schema from a strict schema
+   */
   safeSchema = (schema: ZodSchema<Shape, any, any>) => {
     return z.preprocess(
       this.transform,
@@ -196,10 +258,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     );
   };
 }
-
-const test = z.object({
-  name: z.string(),
-});
 
 export const createJsonEvolver = <T extends {}>(
   _input: { schema: ZodSchema<T> } | { initialShape: T }
