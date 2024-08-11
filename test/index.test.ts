@@ -25,6 +25,7 @@ describe("add", () => {
       age: 0,
     });
   });
+
   it("should throw an error for name conflict", async () => {
     const evolver = createEvolver().add({
       defaultVal: "",
@@ -93,7 +94,9 @@ describe("stringify", () => {
     const evolver = createEvolver();
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
-    expect(JSON.parse(stringifyResult)).toHaveProperty("_zevo_version");
+    expect(JSON.parse(stringifyResult)).toHaveProperty(
+      "__json_evolver_schema_evolution_count"
+    );
   });
 
   it("should tag a nested object with correct version", () => {
@@ -115,7 +118,11 @@ describe("stringify", () => {
       .register("nested", nestedEvolver);
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
-    expect(JSON.parse(stringifyResult)["nested"]["_zevo_version"]).toBe(2);
+    expect(
+      JSON.parse(stringifyResult)["nested"][
+        "__json_evolver_schema_evolution_count"
+      ]
+    ).toBe(2);
   });
 });
 
@@ -128,5 +135,42 @@ describe("remove", () => {
 
     // Type Test
     (): { name: string } => evolver.transform({});
+  });
+});
+
+describe("transform counts", () => {
+  it("should apply no transforms when unchanged", () => {
+    const evolver = createEvolver();
+    const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    evolver.transform(result);
+
+    expect(evolver.transformsAppliedCount).toBe(0);
+  });
+
+  it("should apply remaining transforms when changed", () => {
+    const evolver = createEvolver();
+    const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    const evolver2 = evolver
+      .add({
+        path: "motto",
+        defaultVal: "",
+        schema: z.string(),
+      })
+      .rename({
+        source: "name",
+        destination: "first-name",
+      });
+
+    evolver2.transform(result);
+
+    expect(evolver2.transformsAppliedCount).toBe(2);
+  });
+
+  it("should apply all transforms no matter what if not from stringified entities", () => {
+    const evolver = createEvolver();
+    evolver.transform({ name: "jon" });
+    expect(evolver.transformsAppliedCount).toBe(2);
   });
 });

@@ -14,6 +14,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   nestedPaths: [NestedKeyOf<Shape>, JsonEvolver<any>][] = [];
   // Which tags correspond with which
   versions: Map<number, number> = new Map();
+  transformsAppliedCount: number = 0;
 
   constructor(input?: {
     schemaEvolutionCount: number;
@@ -35,6 +36,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       this.nestedPaths = [];
       this.paths = [];
       this.versions = new Map();
+      this.transformsAppliedCount = 0;
     }
   }
 
@@ -62,10 +64,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     } else this.paths.push(path);
 
     const transform = (input: any) => {
-      const zevoVersion = input[schemaEvolutionCountTag];
-      if (zevoVersion >= this.schemaEvolutionCount) {
-        return input;
-      }
       const result = schema.safeParse(input[path]);
       if (!result.success) input[path] = defaultVal;
       return input;
@@ -96,10 +94,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     }
 
     const transform = (input: any) => {
-      const zevoVersion = input[schemaEvolutionCountTag];
-      if (zevoVersion >= this.schemaEvolutionCount) {
-        return input;
-      }
       input[destination] = input[source];
       delete input[source];
       return input;
@@ -117,10 +111,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     this.paths = this.paths.filter((pathName) => pathName !== source);
 
     const transform = (input: any) => {
-      const zevoVersion = input[schemaEvolutionCountTag];
-      if (zevoVersion >= this.schemaEvolutionCount) {
-        return input;
-      }
       delete input[source];
       return input;
     };
@@ -131,7 +121,14 @@ export class JsonEvolver<Shape extends FillableObject> {
   };
 
   transform = (input: any): Shape => {
-    for (let transformFn of this.transforms) {
+    const zevoVersion = input[schemaEvolutionCountTag];
+
+    const forwardTransforms = zevoVersion
+      ? this.transforms.slice(zevoVersion)
+      : this.transforms;
+
+    for (let transformFn of forwardTransforms) {
+      this.transformsAppliedCount = this.transformsAppliedCount + 1;
       input = transformFn(input);
     }
     return input;
