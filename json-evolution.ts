@@ -1,6 +1,7 @@
 import { z, ZodSchema } from "zod";
 import type { ObjectWith } from "./types/ObjectWith";
 import { type Merge } from "ts-toolbelt/out/Object/Merge";
+import type { Equals } from "./types/Equals";
 type FillableObject = Merge<{}, {}>;
 
 export type GetJsonEvolverShape<T extends JsonEvolver<any>> = ReturnType<
@@ -251,7 +252,10 @@ export class JsonEvolver<Shape extends FillableObject> {
   /**
    * create a safe schema from a strict schema
    */
-  safeSchema = (schema: ZodSchema<Shape, any, any>) => {
+  safeSchema = <Z extends ZodSchema<Shape, any, any>>(
+    schema: Z
+  ): Shape extends z.infer<Z> ? Z : never => {
+    // @ts-ignore
     return z.preprocess(
       this.transform,
       (schema as any).passthrough() as typeof schema
@@ -259,8 +263,8 @@ export class JsonEvolver<Shape extends FillableObject> {
   };
 }
 
-export const createJsonEvolver = <T extends {}>(
-  _input: { schema: ZodSchema<T> } | { initialShape: T }
-) => {
+export const createJsonEvolver = <T extends {}>(_input: {
+  schema: ZodSchema<T>;
+}) => {
   return new JsonEvolver<T>();
 };

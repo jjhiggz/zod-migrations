@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { createJsonEvolver, JsonEvolver } from "../json-evolution";
 import { z } from "zod";
+import type { Equals } from "../types/Equals";
 
 const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 
@@ -232,5 +233,61 @@ function testSafeSchemaReturnType(): 1 {
     name: z.string(),
   });
 
-  const evoSchema = createEvolver({ schema: restaurantSchema }).add();
+  const menuSchema = z.object({
+    menuName: z.string(),
+  });
+
+  const restaurantWithChildren = restaurantSchema.extend({
+    menus: z.array(menuSchema),
+  });
+
+  const evolver = createJsonEvolver({ schema: restaurantSchema })
+    .add({
+      path: "menus",
+      schema: z.array(menuSchema),
+      defaultVal: [],
+    })
+    .register("menus", createJsonEvolver({ schema: z.array(menuSchema) }));
+
+  const safeSchema: typeof restaurantWithChildren = evolver.safeSchema(
+    restaurantWithChildren
+  );
+
+  type A = z.infer<typeof restaurantWithChildren>;
+  type B = z.infer<typeof safeSchema>;
+
+  const badEvolver = evolver.remove("name");
+
+  // should be type never if evolver is missing fields in schema
+  const badEvolverSchema = badEvolver.safeSchema(restaurantWithChildren);
+  // @ts-expect-error
+  const a: Equals<
+    z.infer<typeof badEvolverSchema>,
+    z.infer<typeof restaurantWithChildren>
+  > = 1;
+
+  // should explode if schema is missing fields in evolver
+  const otherBadEvolverSchema = badEvolver
+    .add({
+      path: "cheese",
+      defaultVal: "",
+      schema: z.string(),
+    })
+    // @ts-expect-error
+    .safeSchema(restaurantWithChildren);
+
+  // should
+  type C = z.infer<typeof restaurantWithChildren>;
+  type D = z.infer<typeof safeSchema>;
+
+  const canInstantiateNested: D = {
+    name: "restaurant",
+    menus: [
+      {
+        menuName: "menu 1",
+      },
+    ],
+  };
+
+  return 1 as Equals<A, B>;
 }
