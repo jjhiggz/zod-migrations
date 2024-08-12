@@ -1,12 +1,6 @@
 import { z, ZodSchema } from "zod";
-import type { ObjectWith } from "./types/ObjectWith";
-import { type Merge } from "ts-toolbelt/out/Object/Merge";
-import type { Equals } from "./types/Equals";
-type FillableObject = Merge<{}, {}>;
-
-export type GetJsonEvolverShape<T extends JsonEvolver<any>> = ReturnType<
-  T["transform"]
->;
+import type { FillableObject, Mutator } from "./types";
+import { mutators } from "./mutators";
 
 export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 export const versionTag = "__json_evolver_version";
@@ -20,7 +14,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   /**
    * The transforms for this schema
    */
-  private transforms: ((input: any) => any)[] = [];
+  private mutators: Mutator<any, any>[] = [];
 
   /**
    * The paths that are registered according to your schema count
@@ -48,20 +42,20 @@ export class JsonEvolver<Shape extends FillableObject> {
    */
   constructor(input?: {
     schemaEvolutionCount: number;
-    transforms: ((input: any) => any)[];
+    mutators: Mutator<any, any>[];
     nestedPaths: [keyof Shape, JsonEvolver<any>][];
     paths: string[];
     versions: Map<number, number>;
   }) {
     if (input) {
-      const { schemaEvolutionCount = 1, transforms, paths } = input;
+      const { schemaEvolutionCount = 1, mutators: mutators, paths } = input;
       this.schemaEvolutionCount = schemaEvolutionCount;
-      this.transforms = transforms;
+      this.mutators = mutators;
       this.nestedPaths = input.nestedPaths;
       this.paths = paths;
       this.versions = input.versions;
     } else {
-      this.transforms = [];
+      this.mutators = [];
       this.schemaEvolutionCount = 0;
       this.nestedPaths = [];
       this.paths = [];
@@ -76,7 +70,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   next = <NewShape extends FillableObject>() => {
     return new JsonEvolver<NewShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
-      transforms: this.transforms,
+      mutators: this.mutators,
       // @ts-ignore
       nestedPaths: this.nestedPaths,
       paths: this.paths,
@@ -100,15 +94,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       throw new Error(`'${path}' already exists in your JsonEvolver`);
     } else this.paths.push(path);
 
-    const transform = (input: any) => {
-      const result = schema.safeParse(input[path]);
-      if (!result.success) input[path] = defaultVal;
-      return input;
-    };
-
-    this.transforms.push(transform);
-
-    return this.next<Shape & ObjectWith<Path, typeof defaultVal>>();
+    return this.mutate(() => mutators.add({ path, schema, defaultVal }));
   };
 
   /**
@@ -132,18 +118,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       this.paths.push(destination);
     }
 
-    const transform = (input: any) => {
-      input[destination] = input[source];
-      delete input[source];
-      return input;
-    };
-
-    this.transforms.push(transform);
-
-    return this.next<
-      // @ts-ignore
-      Omit<Shape, SourceKey> & ObjectWith<DestinationKey, Shape[SourceKey]>
-    >();
+    return this.mutate(() => mutators.rename(source, destination));
   };
 
   /**
@@ -152,14 +127,14 @@ export class JsonEvolver<Shape extends FillableObject> {
   remove = <SourceKey extends keyof Shape>(source: SourceKey) => {
     this.paths = this.paths.filter((pathName) => pathName !== source);
 
-    const transform = (input: any) => {
-      delete input[source];
-      return input;
-    };
+    return this.mutate(() => mutators.removeOne(source));
+  };
 
-    this.transforms.push(transform);
+  mutate = <T extends object>(createMutator: () => Mutator<Shape, T>) => {
+    const mutator = createMutator();
+    this.mutators.push(mutator);
 
-    return this.next<Omit<Shape, SourceKey>>();
+    return this.next<ReturnType<(typeof mutator)["up"]>>();
   };
 
   /**
@@ -168,13 +143,17 @@ export class JsonEvolver<Shape extends FillableObject> {
   transform = (input: any): Shape => {
     const zevoVersion = input[schemaEvolutionCountTag] ?? 0;
 
-    const forwardTransforms = zevoVersion
-      ? this.transforms.slice(zevoVersion)
-      : this.transforms;
+    const mutators = zevoVersion
+      ? this.mutators.slice(zevoVersion)
+      : this.mutators;
 
-    for (let transformFn of forwardTransforms) {
+    for (let mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
-      input = transformFn(input);
+      if (!mutator.isValid(input)) {
+        input = mutator.up(input);
+      }
+
+      // input = transformFn(input);
     }
     return input;
   };
@@ -241,7 +220,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   __get_private_data() {
     return {
       schemaEvolutionCount: this.schemaEvolutionCount,
-      transforms: this.transforms,
+      transforms: this.mutators,
       paths: this.paths,
       nestedPaths: this.nestedPaths,
       versions: this.versions,

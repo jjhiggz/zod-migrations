@@ -4,7 +4,8 @@
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest",
-    "ts-toolbelt": "^9.6.0"
+    "ts-toolbelt": "^9.6.0",
+    "vitest": "^2.0.5"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -13,6 +14,8 @@
     "@types/graphlib": "^2.1.12",
     "fast-json-patch": "^3.1.1",
     "graphlib": "^2.1.8",
+    "remeda": "^2.10.1",
+    "type-fest": "^4.24.0",
     "zod": "^3.23.8"
   }
 }

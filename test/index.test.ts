@@ -1,7 +1,8 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { createJsonEvolver, JsonEvolver } from "../json-evolution";
 import { z } from "zod";
 import type { Equals } from "../types/Equals";
+import { mutators } from "../mutators";
 
 const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 
@@ -27,6 +28,24 @@ describe("add", () => {
       age: 0,
     });
   });
+  it("should corectly apply defaults", () => {
+    const evolver = new JsonEvolver()
+      .add({
+        path: "name",
+        defaultVal: "jon",
+        schema: z.string(),
+      })
+      .add({
+        path: "age",
+        defaultVal: 10,
+        schema: z.number(),
+      });
+
+    expect(evolver.transform({})).toEqual({
+      name: "jon",
+      age: 10,
+    });
+  });
 
   it("should throw an error for name conflict", async () => {
     const evolver = createEvolver().add({
@@ -49,10 +68,13 @@ describe("add", () => {
 
 describe("rename", () => {
   it("should poop out the correct type", () => {
-    const evolver = createEvolver().rename({
+    const evolverBefore = createEvolver();
+
+    const evolver = evolverBefore.rename({
       source: "name",
       destination: "firstName",
     });
+
     expect(evolver.transform({}).firstName).toEqual("");
     expect(evolver.transform({ name: "jon" }).firstName).toEqual("jon");
   });
@@ -291,3 +313,94 @@ function testSafeSchemaReturnType(): 1 {
 
   return 1 as Equals<A, B>;
 }
+
+describe("mutate", () => {
+  it("should work just like add with add mutator", () => {
+    const evolver = createEvolver().mutate(() =>
+      mutators.add({
+        defaultVal: "swiss",
+        path: "cheese",
+        schema: z.string(),
+      })
+    );
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      cheese: "swiss",
+    });
+  });
+
+  it("should work with removeOne", () => {
+    const evolver = createEvolver()
+      .add({
+        defaultVal: "",
+        path: "cheese",
+        schema: z.string(),
+      })
+      .mutate(() => mutators.removeOne("cheese"));
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+    });
+  });
+
+  it("should work with removeMany", () => {
+    const evolver = createEvolver()
+      .add({
+        defaultVal: "",
+        path: "cheese",
+        schema: z.string(),
+      })
+      .add({
+        defaultVal: "",
+        path: "pizza",
+        schema: z.string(),
+      })
+      .mutate(() => mutators.removeMany(["cheese", "pizza"]));
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+    });
+  });
+
+  it("should work with rename", () => {
+    const evolver = createEvolver()
+      .add({
+        defaultVal: "",
+        path: "cheese",
+        schema: z.string(),
+      })
+      .mutate(() => mutators.rename("cheese", "pizza"));
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      pizza: "",
+    });
+  });
+
+  it("should work with merge", () => {
+    const evolver = createEvolver().mutate(() =>
+      mutators.addMany({
+        defaultValues: {
+          cheese: "",
+          poop: "",
+        },
+        schema: z.object({
+          cheese: z.string(),
+          poop: z.string(),
+        }),
+      })
+    );
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      cheese: "",
+      poop: "",
+    });
+  });
+});

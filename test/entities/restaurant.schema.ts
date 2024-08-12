@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { menuEvoSchema, safeMenuSchema } from "./menu.schema";
-import { JsonEvolver, type GetJsonEvolverShape } from "../../json-evolution";
+import { JsonEvolver } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
 
 const restaurantSchema = z.object({
