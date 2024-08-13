@@ -282,3 +282,6 @@ export type {
   IfBoundedRecord as f,
   ReorderedArray as g,
 };
+
+export type NonMergeObject<MergeObject> = Record<string, any> &
+  Partial<Record<keyof MergeObject, never>>;

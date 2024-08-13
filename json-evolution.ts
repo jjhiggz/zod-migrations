@@ -137,6 +137,7 @@ export class JsonEvolver<Shape extends FillableObject> {
 
   mutate = <T extends object>(createMutator: () => Mutator<Shape, T>) => {
     const mutator = createMutator();
+
     this.mutators.push(mutator);
 
     return this.next<T>();
@@ -151,6 +152,9 @@ export class JsonEvolver<Shape extends FillableObject> {
     const firstInvalidMutationIndex = (() => {
       if (zevoVersion) return 0;
       return this.mutators.findIndex((mutator, i) => {
+        if (mutator.tag === "addMany") {
+          console.log({ mutator });
+        }
         return !mutator.isValid(input);
       });
     })();

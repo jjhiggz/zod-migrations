@@ -27,8 +27,6 @@ describe("add", () => {
   it("should poop out all of the defaults if empty object put in", () => {
     const evolver = createEvolver();
 
-    console.log(evolver.transform({}));
-
     expect(evolver.transform({})).toEqual({
       name: "",
       age: 0,
@@ -418,28 +416,6 @@ describe("mutate", () => {
       pizza: "",
     });
   });
-
-  it("should work with merge", () => {
-    const evolver = createEvolver().mutate(() =>
-      mutators.addMany({
-        defaultValues: {
-          cheese: "",
-          poop: "",
-        },
-        schema: z.object({
-          cheese: z.string(),
-          poop: z.string(),
-        }),
-      })
-    );
-
-    expect(evolver.transform({})).toEqual({
-      name: "",
-      age: 0,
-      cheese: "",
-      poop: "",
-    });
-  });
 });
 
 describe("check all versions", () => {
@@ -463,6 +439,46 @@ describe("check all versions", () => {
       startData: {},
       customTestCase: [
         { input: { name: "jon" }, output: { firstName: "jon", age: 0 } },
+      ],
+    });
+  });
+});
+
+describe.only("addMany", () => {
+  it("should work with merge", () => {
+    const evolver = createEvolver().mutate(() =>
+      mutators.addMany({
+        defaultValues: {
+          cheese: "",
+          poop: "",
+        },
+        schema: z.object({
+          cheese: z.string(),
+          poop: z.string(),
+        }),
+      })
+    );
+
+    testAllVersions({
+      evolver,
+      expect,
+      schema: z.object({
+        name: z.string(),
+        cheese: z.string(),
+        age: z.number(),
+        poop: z.string(),
+      }),
+      startData: {},
+      customTestCase: [
+        {
+          input: { name: "jon", age: 12 },
+          output: {
+            name: "jon",
+            age: 12,
+            poop: "",
+            cheese: "",
+          },
+        },
       ],
     });
   });

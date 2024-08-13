@@ -1,5 +1,5 @@
 import { z, type AnyZodObject, type ZodSchema } from "zod";
-import type { FillableObject, Mutator } from "./types";
+import type { FillableObject, Mutator, NonMergeObject } from "./types";
 import { addProp, merge, omit, pipe } from "remeda";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
@@ -81,9 +81,10 @@ const rename = <
 
 const addMany = <
   Shape extends FillableObject,
-  Schema extends ZodSchema<any, any, any>
+  Schema extends ZodSchema<NonMergeObject<Shape>, any, any>
 >({
   defaultValues,
+  schema,
 }: {
   defaultValues: z.infer<Schema>;
   schema: Schema;
@@ -96,6 +97,7 @@ const addMany = <
     tag: "addMany",
     up,
     isValid: (input) => {
+      const entries = Object.entries((schema as any).shape);
       return false;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
