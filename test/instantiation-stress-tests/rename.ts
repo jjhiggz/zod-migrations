@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { z } from "zod";
 import { ZodMigrations } from "../../src/zod-migration";
-import type { Equals } from "../../types/Equals";
+import type { Equals } from "../../src/types/Equals";
 
 export const dumbSchema = z.object({
   ["first-name"]: z.string(),

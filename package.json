@@ -1,25 +1,44 @@
 {
   "name": "zod-migrations",
-  "module": "index.ts",
+  "version": "0.0.20",
+  "description": "It's like migrations on databases, but for your zod schemas. Now as your types change you will be able to parse any previous version of that type into the newest version",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "git repository": "https://github.com/jjhiggz/json-evolver",
+  "keywords": [
+    "zod",
+    "schemas",
+    "migrations",
+    "nosql"
+  ],
+  "author": {
+    "email": "never-email-me@seriously.com",
+    "name": "Jonathan Higger",
+    "url": "https://personal-site-2024-dun.vercel.app/about"
+  },
+  "license": "ISC",
+  "scripts": {
+    "test": "vitest",
+    "build": "tsup"
+  },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
-    "@types/bun": "latest",
-    "globals": "^15.9.0",
+    "eslint": "^9.9.0",
+    "ts-node": "^10.9.2",
     "ts-toolbelt": "^9.6.0",
+    "tsup": "^8.2.4",
+    "type-fest": "^4.24.0",
+    "typescript": "^5.5.4",
     "typescript-eslint": "^8.1.0",
     "vitest": "^2.0.5"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
   "dependencies": {
-    "@types/graphlib": "^2.1.12",
-    "eslint": "^9.9.0",
-    "fast-json-patch": "^3.1.1",
-    "graphlib": "^2.1.8",
     "remeda": "^2.10.1",
-    "type-fest": "^4.24.0",
     "zod": "^3.23.8"
   }
 }

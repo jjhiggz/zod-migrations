@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodSchema } from "zod";
-import type { FillableObject, Mutator } from "../types/types";
+import type { FillableObject, Mutator } from "./types/types";
 import { mutators } from "./mutators";
-import type { ObjectWith } from "../types/ObjectWith";
+import type { ObjectWith } from "./types/ObjectWith";
 import type { Simplify } from "type-fest";
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";

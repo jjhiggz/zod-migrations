@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Merge } from "ts-toolbelt/out/Object/Merge";
-import type { ZodMigrations } from "../src/zod-migration";
+import type { ZodMigrations } from "../zod-migration";
 import type {
   EmptyObject,
   IsAny,

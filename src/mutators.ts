@@ -6,7 +6,7 @@ import type {
   Mutator,
   NonMergeObject,
   RenameManyReturn,
-} from "../types/types";
+} from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>

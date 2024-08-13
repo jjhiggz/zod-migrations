@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Equals } from "../../types/Equals";
+import type { Equals } from "../../src/types/Equals";
 import { ZodMigrations } from "../../src/zod-migration";
 
 export const dumbSchema = z.object({

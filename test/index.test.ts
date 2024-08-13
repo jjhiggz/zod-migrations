@@ -7,7 +7,7 @@ import {
   schemaEvolutionCountTag,
 } from "../src/zod-migration";
 import { z } from "zod";
-import type { Equals } from "../types/Equals";
+import type { Equals } from "../src/types/Equals";
 import { mutators } from "../src/mutators";
 
 const createEvolver = () =>
