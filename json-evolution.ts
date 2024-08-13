@@ -1,6 +1,8 @@
 import { z, ZodSchema } from "zod";
 import type { FillableObject, Mutator, UpsertProp } from "./types";
 import { mutators } from "./mutators";
+import type { ObjectWith } from "./types/ObjectWith";
+import type { Simplify } from "type-fest";
 
 export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 export const versionTag = "__json_evolver_version";
@@ -94,7 +96,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       throw new Error(`'${path}' already exists in your JsonEvolver`);
     } else this.paths.push(path);
 
-    return this.mutate<UpsertProp<Shape, Path, z.infer<S>>>(() =>
+    return this.mutate<Shape & ObjectWith<Path, z.infer<S>>>(() =>
       // @ts-ignore
       mutators.add({ path, schema, defaultVal })
     );
@@ -239,9 +241,9 @@ export class JsonEvolver<Shape extends FillableObject> {
   /**
    * create a safe schema from a strict schema
    */
-  safeSchema = <Z extends ZodSchema<Shape, any, any>>(
+  safeSchema = <Z extends ZodSchema<Simplify<Shape>, any, any>>(
     schema: Z
-  ): Shape extends z.infer<Z> ? Z : never => {
+  ): Simplify<Shape> extends z.infer<Z> ? Z : never => {
     // @ts-ignore
     return z.preprocess(
       this.transform,

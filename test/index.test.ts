@@ -445,10 +445,19 @@ describe("mutate", () => {
 describe("check all versions", () => {
   it("should test all versions", () => {
     testAllVersions({
-      evolver: createEvolver().rename({
-        source: "name",
-        destination: "firstName",
-      }),
+      evolver: createEvolver()
+        .rename({
+          source: "name",
+          destination: "firstName",
+        })
+        .rename({
+          source: "firstName",
+          destination: "name",
+        })
+        .rename({
+          source: "name",
+          destination: "firstName",
+        }),
       schema: z.object({ firstName: z.string(), age: z.number() }),
       expect: expect,
       startData: {},
