@@ -92,10 +92,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     defaultVal: z.infer<S>;
     schema: S;
   }) => {
-    if (this.paths.includes(path)) {
-      throw new Error(`'${path}' already exists in your JsonEvolver`);
-    } else this.paths.push(path);
-
     return this.mutate<Shape & ObjectWith<Path, z.infer<S>>>(() =>
       // @ts-ignore
       mutators.add({ path, schema, defaultVal })
@@ -112,17 +108,6 @@ export class JsonEvolver<Shape extends FillableObject> {
     source: SourceKey;
     destination: DestinationKey;
   }) => {
-    this.paths = this.paths.filter((pathName) => pathName !== source);
-    if (this.paths.includes(destination)) {
-      throw new Error(
-        `Cannot rename '${
-          source as string
-        }' to  '${destination}' because it already exists in your schema`
-      );
-    } else {
-      this.paths.push(destination);
-    }
-
     return this.mutate(() => mutators.rename(source, destination));
   };
 
@@ -137,6 +122,11 @@ export class JsonEvolver<Shape extends FillableObject> {
 
   mutate = <T extends object>(createMutator: () => Mutator<Shape, T>) => {
     const mutator = createMutator();
+    mutator.beforeMutate({
+      paths: this.paths,
+    });
+
+    this.paths = mutator.rewritePaths(this.paths);
 
     this.mutators.push(mutator);
 

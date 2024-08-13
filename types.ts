@@ -18,6 +18,8 @@ export type Mutator<Shape, ReturnShape> = {
   tag: string;
   up: (input: Shape) => ReturnShape;
   isValid: (input: Shape) => boolean;
+  rewritePaths: (input: string[]) => string[];
+  beforeMutate: ({ paths }: { paths: string[] }) => any;
 };
 
 export type FillableObject = Merge<{}, {}>;

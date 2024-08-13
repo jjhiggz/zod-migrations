@@ -27,6 +27,11 @@ const add = <
     up,
     // @ts-ignore
     isValid: (input: unknown) => isValid(input?.[path], schema),
+    rewritePaths: (input) => [...input, path],
+    beforeMutate: ({ paths }) => {
+      if (paths.includes(path))
+        throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -41,6 +46,11 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
     up,
     tag: "removeOne",
     isValid: (input) => !(path in input),
+    rewritePaths: (input) =>
+      input.filter((pathInEvolver) => pathInEvolver !== path),
+    beforeMutate: () => {
+      // do nothing, inputs parsed in typesystem
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -55,6 +65,11 @@ const removeMany = <Shape extends object, K extends keyof Shape>(
     tag: "removeMany",
     up,
     isValid: () => false,
+    beforeMutate: () => {
+      // do nothing, inputs parsed in typesystem
+    },
+    rewritePaths: (input) =>
+      input.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -76,6 +91,19 @@ const rename = <
     tag: "rename",
     // @ts-ignore
     isValid: (input) => destination in input && !(source in input),
+    beforeMutate: ({ paths }) => {
+      if (paths.includes(destination)) {
+        // @ts-ignore
+        throw new Error(
+          `Cannot rename '${
+            source as string
+          }' to  '${destination}' because it already exists in your schema`
+        );
+      }
+    },
+    rewritePaths: (paths) => {
+      return [...paths, destination].filter((p) => p !== source);
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -100,6 +128,11 @@ const addMany = <
       const entries = Object.entries((schema as any).shape);
       return false;
     },
+    beforeMutate: () => {
+      // Do nothing, should be accounted for
+    },
+    // @ts-ignore
+    rewritePaths: (paths) => [...paths, ...Object.keys(schema.shape)],
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 

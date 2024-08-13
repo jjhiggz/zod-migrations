@@ -444,7 +444,7 @@ describe("check all versions", () => {
   });
 });
 
-describe.only("addMany", () => {
+describe("addMany", () => {
   it("should work with merge", () => {
     const evolver = createEvolver().mutate(() =>
       mutators.addMany({
