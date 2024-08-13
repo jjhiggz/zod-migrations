@@ -1,5 +1,5 @@
 import { z, ZodSchema } from "zod";
-import type { FillableObject, Mutator } from "./types";
+import type { FillableObject, Mutator, UpsertProp } from "./types";
 import { mutators } from "./mutators";
 
 export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
@@ -94,7 +94,10 @@ export class JsonEvolver<Shape extends FillableObject> {
       throw new Error(`'${path}' already exists in your JsonEvolver`);
     } else this.paths.push(path);
 
-    return this.mutate(() => mutators.add({ path, schema, defaultVal }));
+    return this.mutate<UpsertProp<Shape, Path, z.infer<S>>>(() =>
+      // @ts-ignore
+      mutators.add({ path, schema, defaultVal })
+    );
   };
 
   /**
@@ -134,7 +137,7 @@ export class JsonEvolver<Shape extends FillableObject> {
     const mutator = createMutator();
     this.mutators.push(mutator);
 
-    return this.next<ReturnType<(typeof mutator)["up"]>>();
+    return this.next<T>();
   };
 
   /**
@@ -143,17 +146,22 @@ export class JsonEvolver<Shape extends FillableObject> {
   transform = (input: any): Shape => {
     const zevoVersion = input[schemaEvolutionCountTag] ?? 0;
 
+    const firstInvalidMutationIndex = (() => {
+      if (zevoVersion) return 0;
+      return this.mutators.findIndex((mutator, i) => {
+        return !mutator.isValid(input);
+      });
+    })();
+
+    if (firstInvalidMutationIndex === -1 && !zevoVersion) return input;
+
     const mutators = zevoVersion
       ? this.mutators.slice(zevoVersion)
-      : this.mutators;
+      : this.mutators.slice(firstInvalidMutationIndex);
 
     for (let mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
-      if (!mutator.isValid(input)) {
-        input = mutator.up(input);
-      }
-
-      // input = transformFn(input);
+      input = mutator.up(input);
     }
     return input;
   };

@@ -15,6 +15,7 @@ import type {
 } from "type-fest";
 
 export type Mutator<Shape, ReturnShape> = {
+  tag: string;
   up: (input: Shape) => ReturnShape;
   isValid: (input: Shape) => boolean;
 };

@@ -23,6 +23,8 @@ describe("add", () => {
   it("should poop out all of the defaults if empty object put in", () => {
     const evolver = createEvolver();
 
+    console.log(evolver.transform({}));
+
     expect(evolver.transform({})).toEqual({
       name: "",
       age: 0,
@@ -111,6 +113,37 @@ describe("rename", () => {
     expect(result).toBe(null);
     /*  */
   });
+
+  it("should not explode when a valid previous version is put in", async () => {
+    const initialPersonSchema = z.object({
+      name: z.string(),
+    });
+
+    const currentPersonSchema = z.object({
+      firstName: z.string(),
+      lastName: z.string(),
+    });
+    const personEvolver = createJsonEvolver({ schema: initialPersonSchema })
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "lastName",
+        schema: z.string(),
+        defaultVal: "",
+      })
+      .safeSchema(currentPersonSchema);
+
+    const result = await personEvolver
+      .parseAsync({ firstName: "jon" })
+      .catch((e) => {
+        // console.error(e);
+        return null;
+      });
+
+    expect(result).toEqual({ firstName: "jon", lastName: "" });
+  });
 });
 
 describe("stringify", () => {
@@ -192,10 +225,10 @@ describe("transform counts", () => {
     expect(evolver2.__get_private_data().transformsAppliedCount).toBe(2);
   });
 
-  it("should apply all transforms no matter what if not from stringified entities", () => {
+  it("should only apply necessary transforms", () => {
     const evolver = createEvolver();
     evolver.transform({ name: "jon" });
-    expect(evolver.__get_private_data().transformsAppliedCount).toBe(2);
+    expect(evolver.__get_private_data().transformsAppliedCount).toBe(1);
   });
 
   it("should appropriately tag the schema when starting with schema", () => {

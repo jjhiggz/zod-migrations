@@ -1,12 +1,6 @@
-import {
-  z,
-  ZodObject,
-  ZodString,
-  type AnyZodObject,
-  type ZodSchema,
-} from "zod";
+import { z, type AnyZodObject, type ZodSchema } from "zod";
 import type { FillableObject, Mutator } from "./types";
-import { addProp, mapKeys, merge, omit, pipe } from "remeda";
+import { addProp, merge, omit, pipe } from "remeda";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
@@ -29,7 +23,9 @@ const add = <
   };
 
   return {
+    tag: "add",
     up,
+    // @ts-ignore
     isValid: (input: unknown) => isValid(input?.[path], schema),
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -43,6 +39,7 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
 
   return {
     up,
+    tag: "removeOne",
     isValid: (input) => !(path in input),
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -55,6 +52,7 @@ const removeMany = <Shape extends object, K extends keyof Shape>(
   };
 
   return {
+    tag: "removeMany",
     up,
     isValid: () => false,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
@@ -75,8 +73,9 @@ const rename = <
 
   return {
     up,
+    tag: "rename",
     // @ts-ignore
-    isValid: (input) => source in input && !destination in input,
+    isValid: (input) => destination in input && !(source in input),
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -94,6 +93,7 @@ const addMany = <
   };
 
   return {
+    tag: "addMany",
     up,
     isValid: (input) => {
       return false;

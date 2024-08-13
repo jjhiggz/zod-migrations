@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { JsonEvolver } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
+import { JsonEvolver } from "../../json-evolution";
 
 export const dumbSchema = z.object({
   field1: z.string(),
