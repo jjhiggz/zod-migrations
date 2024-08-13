@@ -228,7 +228,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   __get_private_data() {
     return {
       schemaEvolutionCount: this.schemaEvolutionCount,
-      transforms: this.mutators,
+      mutators: this.mutators,
       paths: this.paths,
       nestedPaths: this.nestedPaths,
       versions: this.versions,
@@ -254,4 +254,50 @@ export const createJsonEvolver = <T extends {}>(_input: {
   schema: ZodSchema<T>;
 }) => {
   return new JsonEvolver<T>();
+};
+
+/***
+  It's not a perfect test but it at least let's you know if your data will become the valid shape
+  Technically we need to check that appropriate data is preserved as well
+ */
+export const testAllVersions = ({
+  evolver,
+  schema,
+  expect,
+  startData,
+  customTestCase = [],
+}: {
+  evolver: JsonEvolver<any>;
+  schema: ZodSchema;
+  expect: (input: any) => any;
+  startData: any;
+  customTestCase?: { input: any; output: any }[];
+}) => {
+  const metaData = evolver.__get_private_data();
+
+  const safeSchema = evolver.safeSchema(schema);
+
+  const checkSchema = (input: any) => {
+    const result = safeSchema.safeParse(input).success;
+    if (!result) console.log(`invalid input`, input);
+    expect(result).toBe(true);
+  };
+
+  const checkValidOutput = ([input, output]: [any, any]) => {
+    const result = safeSchema.parse(input);
+    if (!result) console.log(`invalid input`, input);
+    expect(result).toEqual(output);
+  };
+
+  checkSchema(startData);
+  let currentData = startData;
+
+  for (let mutator of metaData.mutators) {
+    currentData = mutator.up(currentData);
+    checkSchema(startData);
+  }
+
+  for (let testCase of customTestCase) {
+    checkValidOutput([testCase.input, testCase.output]);
+  }
 };

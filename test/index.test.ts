@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { createJsonEvolver, JsonEvolver } from "../json-evolution";
+import {
+  createJsonEvolver,
+  JsonEvolver,
+  testAllVersions,
+} from "../json-evolution";
 import { z } from "zod";
 import type { Equals } from "../types/Equals";
 import { mutators } from "../mutators";
@@ -434,6 +438,23 @@ describe("mutate", () => {
       age: 0,
       cheese: "",
       poop: "",
+    });
+  });
+});
+
+describe("check all versions", () => {
+  it("should test all versions", () => {
+    testAllVersions({
+      evolver: createEvolver().rename({
+        source: "name",
+        destination: "firstName",
+      }),
+      schema: z.object({ firstName: z.string(), age: z.number() }),
+      expect: expect,
+      startData: {},
+      customTestCase: [
+        { input: { name: "jon" }, output: { firstName: "jon", age: 0 } },
+      ],
     });
   });
 });
