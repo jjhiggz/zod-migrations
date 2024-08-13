@@ -26,8 +26,8 @@ export type Mutator<Shape, ReturnShape> = {
 
 export type FillableObject = Merge<{}, {}>;
 
-export type GetJsonEvolverShape<T extends JsonEvolver<any>> = ReturnType<
-  T["transform"]
+export type GetJsonEvolverShape<T extends JsonEvolver<any>> = Simplify<
+  ReturnType<T["transform"]>
 >;
 
 // Remeda JS Types
@@ -289,3 +289,13 @@ export type {
 
 export type NonMergeObject<MergeObject> = Record<string, any> &
   Partial<Record<keyof MergeObject, never>>;
+
+export type RenameManyReturn<
+  Shape extends Record<PropertyKey, any>,
+  Renames extends Readonly<Partial<Record<keyof Shape, string>>>
+> = {
+  // Renamed properties
+  [K in keyof Renames as Renames[K] extends string
+    ? Renames[K]
+    : never]: K extends keyof Shape ? Shape[K] : never;
+} & Omit<Shape, keyof Renames>;

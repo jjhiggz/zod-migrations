@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { z, type AnyZodObject, type ZodSchema } from "zod";
-import type { FillableObject, Mutator, NonMergeObject } from "./types/types";
-import { addProp, merge, omit, pipe } from "remeda";
+import type {
+  FillableObject,
+  Mutator,
+  NonMergeObject,
+  RenameManyReturn,
+} from "./types/types";
+import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
+import type { Simplify } from "type-fest";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
@@ -144,10 +150,62 @@ const addMany = <
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
+const renameMany = <
+  Shape extends FillableObject,
+  Renames extends Partial<Readonly<Record<keyof Shape, string>>>
+>({
+  renames,
+}: {
+  renames: Renames;
+}) => {
+  const up = (input: Shape) => {
+    const result = mapKeys(input, (key) => {
+      // @ts-ignore
+      return renames[key as any];
+    }) as RenameManyReturn<Shape, Renames>;
+
+    return result;
+  };
+
+  return {
+    tag: "renameMany",
+    up,
+    isValid: (input) => {
+      return Object.entries(renames).every(([source, destination]) => {
+        return (
+          (destination as keyof typeof input) in input && !(source in input)
+        );
+      });
+    },
+    beforeMutate: () => {
+      if (unique(Object.values(rename)).length > Object.values(rename).length) {
+        throw new Error("Cannot do multiple renames to the same value");
+      }
+      Object.values(rename).forEach((destinationKey) => {
+        Object.keys(rename).forEach((sourceKey) => {
+          if (sourceKey === destinationKey) {
+            throw new Error(
+              `Cannot set source ${sourceKey} to destination ${destinationKey} in one migration`
+            );
+          }
+        });
+      });
+      // Do nothing, should be accounted for
+    },
+    rewritePaths: (paths) => {
+      const values = Object.values(renames) as string[];
+      return [...paths, ...values].filter((p) =>
+        Object.keys(renames).includes(p)
+      );
+    },
+  } satisfies Mutator<Shape, RenameManyReturn<Shape, Renames>>;
+};
+
 export const mutators = {
   add,
   addMany,
   removeOne,
   removeMany,
   rename,
+  renameMany,
 };

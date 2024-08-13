@@ -485,3 +485,43 @@ describe("addMany", () => {
     });
   });
 });
+
+describe("renameMany", () => {
+  it("should work with merge", () => {
+    const evolver = createEvolver()
+      .add({
+        path: "dummy",
+        defaultVal: "",
+        schema: z.string(),
+      })
+      .mutate((shape) => {
+        const renames: Partial<Record<keyof typeof shape, string>> = {
+          age: "newAge",
+          name: "newName",
+        };
+
+        return mutators.renameMany<typeof shape, typeof renames>({
+          renames,
+        });
+      });
+
+    testAllVersions({
+      evolver,
+      expect,
+      schema: z.object({
+        newName: z.string(),
+        newAge: z.number(),
+      }),
+      startData: {},
+      customTestCase: [
+        {
+          input: { name: "jon", age: 12 },
+          output: {
+            newName: "jon",
+            newAge: 12,
+          },
+        },
+      ],
+    });
+  });
+});

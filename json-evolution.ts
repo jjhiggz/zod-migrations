@@ -122,8 +122,10 @@ export class JsonEvolver<Shape extends FillableObject> {
     return this.mutate(() => mutators.removeOne(source));
   };
 
-  mutate = <T extends object>(createMutator: () => Mutator<Shape, T>) => {
-    const mutator = createMutator();
+  mutate = <T extends object>(
+    createMutator: (_input: Shape) => Mutator<Shape, T>
+  ) => {
+    const mutator = createMutator(undefined as any as Shape);
     mutator.beforeMutate({
       paths: this.paths,
     });
@@ -132,7 +134,7 @@ export class JsonEvolver<Shape extends FillableObject> {
 
     this.mutators.push(mutator);
 
-    return this.next<T>();
+    return this.next<T>() as JsonEvolver<T>;
   };
 
   /**
@@ -275,13 +277,13 @@ export const testAllVersions = ({
 
   const checkSchema = (input: any) => {
     const result = safeSchema.safeParse(input).success;
-    if (!result) console.log(`invalid input`, input);
+    if (!result) console.log(`invalid input checkSchema`, input);
     expect(result).toBe(true);
   };
 
   const checkValidOutput = ([input, output]: [any, any]) => {
     const result = safeSchema.parse(input);
-    if (!result) console.log(`invalid input`, input);
+    if (!result) console.log(`invalid input`, input, `for output`, output);
     expect(result).toEqual(output);
   };
 
@@ -290,6 +292,7 @@ export const testAllVersions = ({
 
   for (const mutator of metaData.mutators) {
     currentData = mutator.up(currentData);
+    console.log({ currentData });
     checkSchema(startData);
   }
 
