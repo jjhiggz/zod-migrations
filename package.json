@@ -1,5 +1,5 @@
 {
-  "name": "zod-evo",
+  "name": "zod-migrations",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {

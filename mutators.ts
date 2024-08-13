@@ -8,7 +8,6 @@ import type {
   RenameManyReturn,
 } from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
-import type { Simplify } from "type-fest";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;

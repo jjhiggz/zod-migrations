@@ -2,9 +2,9 @@
 import { describe, it, expect } from "vitest";
 import {
   createJsonEvolver,
-  JsonEvolver,
+  SchemaEvolver,
   testAllVersions,
-} from "../json-evolution";
+} from "../schema-evolver";
 import { z } from "zod";
 import type { Equals } from "../types/Equals";
 import { mutators } from "../mutators";
@@ -12,7 +12,7 @@ import { mutators } from "../mutators";
 const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 
 const createEvolver = () =>
-  new JsonEvolver()
+  new SchemaEvolver()
     .add({
       defaultVal: "",
       path: "name",
@@ -34,7 +34,7 @@ describe("add", () => {
     });
   });
   it("should corectly apply defaults", () => {
-    const evolver = new JsonEvolver()
+    const evolver = new SchemaEvolver()
       .add({
         path: "name",
         defaultVal: "jon",

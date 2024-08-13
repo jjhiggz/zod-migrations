@@ -9,7 +9,7 @@ import type { Simplify } from "type-fest";
 export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
 export const versionTag = "__json_evolver_version";
 
-export class JsonEvolver<Shape extends FillableObject> {
+export class SchemaEvolver<Shape extends FillableObject> {
   /**
    * The amount of evolutions the schema has had since the beginning
    */
@@ -28,7 +28,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   /**
    * An array of tuples of the registered nested paths
    */
-  private nestedPaths: [keyof Shape, JsonEvolver<any>][] = [];
+  private nestedPaths: [keyof Shape, SchemaEvolver<any>][] = [];
 
   /**
    * A map of all the versions. Each version maps to a `schemaEvolutionCount` so that way we
@@ -47,7 +47,7 @@ export class JsonEvolver<Shape extends FillableObject> {
   constructor(input?: {
     schemaEvolutionCount: number;
     mutators: Mutator<any, any>[];
-    nestedPaths: [keyof Shape, JsonEvolver<any>][];
+    nestedPaths: [keyof Shape, SchemaEvolver<any>][];
     paths: string[];
     versions: Map<number, number>;
   }) {
@@ -72,7 +72,7 @@ export class JsonEvolver<Shape extends FillableObject> {
    * Returns the next instance in the chain... See [Fluent Interfaces](https://en.wikipedia.org/wiki/Fluent_interface)
    */
   next = <NewShape extends FillableObject>() => {
-    return new JsonEvolver<NewShape>({
+    return new SchemaEvolver<NewShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
       mutators: this.mutators,
       // @ts-ignore
@@ -134,7 +134,7 @@ export class JsonEvolver<Shape extends FillableObject> {
 
     this.mutators.push(mutator);
 
-    return this.next<T>() as JsonEvolver<T>;
+    return this.next<T>() as SchemaEvolver<T>;
   };
 
   /**
@@ -168,7 +168,7 @@ export class JsonEvolver<Shape extends FillableObject> {
    */
   register = <T extends FillableObject>(
     key: keyof Shape,
-    jsonEvolution: JsonEvolver<T>
+    jsonEvolution: SchemaEvolver<T>
   ) => {
     this.nestedPaths.push([key, jsonEvolution]);
     return this.next<Shape>();
@@ -251,7 +251,7 @@ export class JsonEvolver<Shape extends FillableObject> {
 export const createJsonEvolver = <T extends object>(_input: {
   schema: ZodSchema<T>;
 }) => {
-  return new JsonEvolver<T>();
+  return new SchemaEvolver<T>();
 };
 
 /***
@@ -265,7 +265,7 @@ export const testAllVersions = ({
   startData,
   customTestCase = [],
 }: {
-  evolver: JsonEvolver<any>;
+  evolver: SchemaEvolver<any>;
   schema: ZodSchema;
   expect: (input: any) => any;
   startData: any;

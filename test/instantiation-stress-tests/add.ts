@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Equals } from "../../types/Equals";
-import { JsonEvolver } from "../../json-evolution";
+import { SchemaEvolver } from "../../schema-evolver";
 
 export const dumbSchema = z.object({
   field1: z.string(),
@@ -115,7 +115,7 @@ export const dumbSchema = z.object({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dumbEvoSchema = new JsonEvolver()
+const dumbEvoSchema = new SchemaEvolver()
   .add({
     path: "field1",
     defaultVal: "",

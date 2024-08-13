@@ -1,6 +1,6 @@
-# json-evolver
+# Zod Migrations
 
-JSON Evolver is like migrations but for your zod schemas.
+Zod Migratins is like database migrations but for your zod schemas.
 
 The idea for this library came from [This Article](https://www.inkandswitch.com/cambria/). If you're interested in the differences between this and Cambria, I've written a little bit about that [here](#differences-between-this-and-cambria).
 
