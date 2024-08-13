@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodSchema } from "zod";
-import type { FillableObject, Mutator, UpsertProp } from "./types";
+import type { FillableObject, Mutator } from "./types/types";
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Simplify } from "type-fest";
@@ -141,10 +143,7 @@ export class JsonEvolver<Shape extends FillableObject> {
 
     const firstInvalidMutationIndex = (() => {
       if (zevoVersion) return 0;
-      return this.mutators.findIndex((mutator, i) => {
-        if (mutator.tag === "addMany") {
-          console.log({ mutator });
-        }
+      return this.mutators.findIndex((mutator) => {
         return !mutator.isValid(input);
       });
     })();
@@ -155,7 +154,7 @@ export class JsonEvolver<Shape extends FillableObject> {
       ? this.mutators.slice(zevoVersion)
       : this.mutators.slice(firstInvalidMutationIndex);
 
-    for (let mutator of mutators) {
+    for (const mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
       input = mutator.up(input);
     }
@@ -246,7 +245,8 @@ export class JsonEvolver<Shape extends FillableObject> {
   };
 }
 
-export const createJsonEvolver = <T extends {}>(_input: {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const createJsonEvolver = <T extends object>(_input: {
   schema: ZodSchema<T>;
 }) => {
   return new JsonEvolver<T>();
@@ -288,12 +288,12 @@ export const testAllVersions = ({
   checkSchema(startData);
   let currentData = startData;
 
-  for (let mutator of metaData.mutators) {
+  for (const mutator of metaData.mutators) {
     currentData = mutator.up(currentData);
     checkSchema(startData);
   }
 
-  for (let testCase of customTestCase) {
+  for (const testCase of customTestCase) {
     checkValidOutput([testCase.input, testCase.output]);
   }
 };

@@ -114,6 +114,7 @@ export const dumbSchema = z.object({
   field109: z.string(),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const dumbEvoSchema = new JsonEvolver()
   .add({
     path: "field1",
@@ -666,6 +667,7 @@ const dumbEvoSchema = new JsonEvolver()
     schema: z.string(),
   });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const checkEvoTypeMenu = (): 1 => {
   return 1 as Equals<
     ReturnType<(typeof dumbEvoSchema)["transform"]>,

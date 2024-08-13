@@ -3,8 +3,11 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
+    "@eslint/js": "^9.9.0",
     "@types/bun": "latest",
+    "globals": "^15.9.0",
     "ts-toolbelt": "^9.6.0",
+    "typescript-eslint": "^8.1.0",
     "vitest": "^2.0.5"
   },
   "peerDependencies": {
@@ -12,6 +15,7 @@
   },
   "dependencies": {
     "@types/graphlib": "^2.1.12",
+    "eslint": "^9.9.0",
     "fast-json-patch": "^3.1.1",
     "graphlib": "^2.1.8",
     "remeda": "^2.10.1",

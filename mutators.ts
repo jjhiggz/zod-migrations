@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { z, type AnyZodObject, type ZodSchema } from "zod";
-import type { FillableObject, Mutator, NonMergeObject } from "./types";
+import type { FillableObject, Mutator, NonMergeObject } from "./types/types";
 import { addProp, merge, omit, pipe } from "remeda";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
@@ -126,6 +128,12 @@ const addMany = <
     up,
     isValid: (input) => {
       const entries = Object.entries((schema as any).shape);
+      entries.every((entry) => {
+        const key = entry[0];
+        const schema = entry[1];
+        // @ts-ignore
+        return schema?.safeParse(input?.[key]).success;
+      });
       return false;
     },
     beforeMutate: () => {

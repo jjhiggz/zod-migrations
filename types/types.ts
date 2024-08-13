@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Merge } from "ts-toolbelt/out/Object/Merge";
-import type { JsonEvolver } from "./json-evolution";
+import type { JsonEvolver } from "../json-evolution";
 import type {
   EmptyObject,
   IsAny,

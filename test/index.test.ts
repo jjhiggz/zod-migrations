@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect } from "vitest";
 import {
   createJsonEvolver,
@@ -140,7 +141,7 @@ describe("rename", () => {
     const result = await personEvolver
       .parseAsync({ firstName: "jon" })
       .catch((e) => {
-        // console.error(e);
+        console.error(e);
         return null;
       });
 
@@ -193,6 +194,7 @@ describe("remove", () => {
     expect(evolver.transform({ name: "Jon" })).toEqual({ name: "Jon" });
 
     // Type Test
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     (): { name: string } => evolver.transform({});
   });
 });
@@ -317,7 +319,7 @@ function testSafeSchemaReturnType(): 1 {
 
   // should be type never if evolver is missing fields in schema
   const badEvolverSchema = badEvolver.safeSchema(restaurantWithChildren);
-  // @ts-expect-error
+  // @ts-expect-error badEvolver schema should never be equal
   const a: Equals<
     z.infer<typeof badEvolverSchema>,
     z.infer<typeof restaurantWithChildren>
@@ -330,7 +332,7 @@ function testSafeSchemaReturnType(): 1 {
       defaultVal: "",
       schema: z.string(),
     })
-    // @ts-expect-error
+    // @ts-expect-error if schema fields missing
     .safeSchema(restaurantWithChildren);
 
   // should

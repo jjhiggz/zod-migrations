@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { z } from "zod";
 import { JsonEvolver } from "../../json-evolution";
 import type { Equals } from "../../types/Equals";
