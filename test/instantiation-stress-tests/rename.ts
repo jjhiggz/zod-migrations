@@ -1,13 +1,13 @@
 /* eslint-disable */
 import { z } from "zod";
-import { SchemaEvolver } from "../../schema-evolver";
+import { ZodMigrations } from "../../src/zod-migration";
 import type { Equals } from "../../types/Equals";
 
 export const dumbSchema = z.object({
   ["first-name"]: z.string(),
 });
 
-const dumbEvoSchema = new SchemaEvolver()
+const dumbEvoSchema = new ZodMigrations()
   .add({
     path: "name",
     defaultVal: "",

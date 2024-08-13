@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Merge } from "ts-toolbelt/out/Object/Merge";
-import type { SchemaEvolver } from "../schema-evolver";
+import type { ZodMigrations } from "../src/zod-migration";
 import type {
   EmptyObject,
   IsAny,
@@ -26,7 +26,7 @@ export type Mutator<Shape, ReturnShape> = {
 
 export type FillableObject = Merge<{}, {}>;
 
-export type GetJsonEvolverShape<T extends SchemaEvolver<any>> = Simplify<
+export type GetJsonEvolverShape<T extends ZodMigrations<any>> = Simplify<
   ReturnType<T["transform"]>
 >;
 

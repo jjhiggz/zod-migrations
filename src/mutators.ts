@@ -6,7 +6,7 @@ import type {
   Mutator,
   NonMergeObject,
   RenameManyReturn,
-} from "./types/types";
+} from "../types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
@@ -160,7 +160,7 @@ const renameMany = <
   const up = (input: Shape) => {
     const result = mapKeys(input, (key) => {
       // @ts-ignore
-      return renames[key as any];
+      return key in renames ? renames[key as any] : key;
     }) as RenameManyReturn<Shape, Renames>;
 
     return result;

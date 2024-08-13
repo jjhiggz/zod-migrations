@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodSchema } from "zod";
-import type { FillableObject, Mutator } from "./types/types";
+import type { FillableObject, Mutator } from "../types/types";
 import { mutators } from "./mutators";
-import type { ObjectWith } from "./types/ObjectWith";
+import type { ObjectWith } from "../types/ObjectWith";
 import type { Simplify } from "type-fest";
 
-export const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
-export const versionTag = "__json_evolver_version";
+export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
+export const versionTag = "__zod_migration_version";
 
-export class SchemaEvolver<Shape extends FillableObject> {
+export class ZodMigrations<Shape extends FillableObject> {
   /**
    * The amount of evolutions the schema has had since the beginning
    */
@@ -28,7 +28,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
   /**
    * An array of tuples of the registered nested paths
    */
-  private nestedPaths: [keyof Shape, SchemaEvolver<any>][] = [];
+  private nestedPaths: [keyof Shape, ZodMigrations<any>][] = [];
 
   /**
    * A map of all the versions. Each version maps to a `schemaEvolutionCount` so that way we
@@ -47,7 +47,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
   constructor(input?: {
     schemaEvolutionCount: number;
     mutators: Mutator<any, any>[];
-    nestedPaths: [keyof Shape, SchemaEvolver<any>][];
+    nestedPaths: [keyof Shape, ZodMigrations<any>][];
     paths: string[];
     versions: Map<number, number>;
   }) {
@@ -72,7 +72,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
    * Returns the next instance in the chain... See [Fluent Interfaces](https://en.wikipedia.org/wiki/Fluent_interface)
    */
   next = <NewShape extends FillableObject>() => {
-    return new SchemaEvolver<NewShape>({
+    return new ZodMigrations<NewShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
       mutators: this.mutators,
       // @ts-ignore
@@ -134,7 +134,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
 
     this.mutators.push(mutator);
 
-    return this.next<T>() as SchemaEvolver<T>;
+    return this.next<T>() as ZodMigrations<T>;
   };
 
   /**
@@ -168,7 +168,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
    */
   register = <T extends FillableObject>(
     key: keyof Shape,
-    jsonEvolution: SchemaEvolver<T>
+    jsonEvolution: ZodMigrations<T>
   ) => {
     this.nestedPaths.push([key, jsonEvolution]);
     return this.next<Shape>();
@@ -251,7 +251,7 @@ export class SchemaEvolver<Shape extends FillableObject> {
 export const createJsonEvolver = <T extends object>(_input: {
   schema: ZodSchema<T>;
 }) => {
-  return new SchemaEvolver<T>();
+  return new ZodMigrations<T>();
 };
 
 /***
@@ -265,7 +265,7 @@ export const testAllVersions = ({
   startData,
   customTestCase = [],
 }: {
-  evolver: SchemaEvolver<any>;
+  evolver: ZodMigrations<any>;
   schema: ZodSchema;
   expect: (input: any) => any;
   startData: any;
@@ -292,8 +292,7 @@ export const testAllVersions = ({
 
   for (const mutator of metaData.mutators) {
     currentData = mutator.up(currentData);
-    console.log({ currentData });
-    checkSchema(startData);
+    checkSchema(currentData);
   }
 
   for (const testCase of customTestCase) {

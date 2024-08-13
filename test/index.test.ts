@@ -2,17 +2,16 @@
 import { describe, it, expect } from "vitest";
 import {
   createJsonEvolver,
-  SchemaEvolver,
+  ZodMigrations,
   testAllVersions,
-} from "../schema-evolver";
+  schemaEvolutionCountTag,
+} from "../src/zod-migration";
 import { z } from "zod";
 import type { Equals } from "../types/Equals";
-import { mutators } from "../mutators";
-
-const schemaEvolutionCountTag = "__json_evolver_schema_evolution_count";
+import { mutators } from "../src/mutators";
 
 const createEvolver = () =>
-  new SchemaEvolver()
+  new ZodMigrations()
     .add({
       defaultVal: "",
       path: "name",
@@ -34,7 +33,7 @@ describe("add", () => {
     });
   });
   it("should corectly apply defaults", () => {
-    const evolver = new SchemaEvolver()
+    const evolver = new ZodMigrations()
       .add({
         path: "name",
         defaultVal: "jon",
@@ -154,9 +153,7 @@ describe("stringify", () => {
     const evolver = createEvolver();
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
-    expect(JSON.parse(stringifyResult)).toHaveProperty(
-      "__json_evolver_schema_evolution_count"
-    );
+    expect(JSON.parse(stringifyResult)).toHaveProperty(schemaEvolutionCountTag);
   });
 
   it("should tag a nested object with correct version", () => {
@@ -178,11 +175,9 @@ describe("stringify", () => {
       .register("nested", nestedEvolver);
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
-    expect(
-      JSON.parse(stringifyResult)["nested"][
-        "__json_evolver_schema_evolution_count"
-      ]
-    ).toBe(2);
+    expect(JSON.parse(stringifyResult)["nested"][schemaEvolutionCountTag]).toBe(
+      2
+    );
   });
 });
 
@@ -487,7 +482,7 @@ describe("addMany", () => {
 });
 
 describe("renameMany", () => {
-  it("should work with merge", () => {
+  it("should work for rename many", () => {
     const evolver = createEvolver()
       .add({
         path: "dummy",
@@ -511,14 +506,16 @@ describe("renameMany", () => {
       schema: z.object({
         newName: z.string(),
         newAge: z.number(),
+        dummy: z.string(),
       }),
       startData: {},
       customTestCase: [
         {
-          input: { name: "jon", age: 12 },
+          input: { name: "jon", age: 12, dummy: "" },
           output: {
             newName: "jon",
             newAge: 12,
+            dummy: "",
           },
         },
       ],
