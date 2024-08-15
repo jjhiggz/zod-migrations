@@ -9,6 +9,7 @@ import {
 import { z } from "zod";
 import type { Equals } from "../src/types/Equals";
 import { mutators } from "../src/mutators";
+import { GetJsonEvolverShape } from "../src/types/types";
 
 const createEvolver = () =>
   new ZodMigrations()
@@ -32,6 +33,7 @@ describe("add", () => {
       age: 0,
     });
   });
+
   it("should corectly apply defaults", () => {
     const evolver = new ZodMigrations()
       .add({
@@ -442,6 +444,45 @@ describe("check all versions", () => {
 });
 
 describe("addMany", () => {
+  it("should work with builtin method", () => {
+    const evolver = createEvolver().addMany({
+      schema: z.object({
+        cheese: z.string(),
+        poop: z.string(),
+      }),
+      defaultValues: {
+        cheese: "",
+        poop: "",
+      },
+    });
+
+    evolver.__clone().remove("name"); // type should not fail
+    evolver.__clone().remove("poop"); // type should not fail otherwise addMany inferring wrong type
+
+    testAllVersions({
+      evolver,
+      expect,
+      schema: z.object({
+        name: z.string(),
+        cheese: z.string(),
+        age: z.number(),
+        poop: z.string(),
+      }),
+      startData: {},
+      customTestCase: [
+        {
+          input: { name: "jon", age: 12 },
+          output: {
+            name: "jon",
+            age: 12,
+            poop: "",
+            cheese: "",
+          },
+        },
+      ],
+    });
+  });
+
   it("should work with merge", () => {
     const evolver = createEvolver().mutate(() =>
       mutators.addMany({
@@ -455,6 +496,13 @@ describe("addMany", () => {
         }),
       })
     );
+
+    function correctEvolverShape(): 1 {
+      return 1 as Equals<
+        GetJsonEvolverShape<typeof evolver>,
+        { name: string; age: number; cheese: string; poop: string }
+      >;
+    }
 
     testAllVersions({
       evolver,
@@ -482,6 +530,51 @@ describe("addMany", () => {
 });
 
 describe("renameMany", () => {
+  it("should work for builtin rename many", () => {
+    const renames = {
+      age: "newAge",
+      name: "newName",
+    } as const;
+
+    const evolver = createEvolver()
+      .add({
+        path: "dummy",
+        defaultVal: "",
+        schema: z.string(),
+      })
+      .renameMany({
+        age: "newAge",
+        name: "newName",
+      } as const);
+
+    function correctEvolverShape(): 1 {
+      return 1 as Equals<
+        GetJsonEvolverShape<typeof evolver>,
+        { newName: string; newAge: number; dummy: string }
+      >;
+    }
+
+    testAllVersions({
+      evolver,
+      expect,
+      schema: z.object({
+        newName: z.string(),
+        newAge: z.number(),
+        dummy: z.string(),
+      }),
+      startData: {},
+      customTestCase: [
+        {
+          input: { name: "jon", age: 12, dummy: "" },
+          output: {
+            newName: "jon",
+            newAge: 12,
+            dummy: "",
+          },
+        },
+      ],
+    });
+  });
   it("should work for rename many", () => {
     const evolver = createEvolver()
       .add({
