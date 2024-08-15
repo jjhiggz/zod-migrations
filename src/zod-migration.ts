@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodSchema } from "zod";
-import type { FillableObject, Mutator } from "./types/types";
+import type {
+  FillableObject,
+  Mutator,
+  NonMergeObject,
+  RenameManyReturn,
+} from "./types/types";
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
-import type { Simplify } from "type-fest";
+import type { Merge, Simplify } from "type-fest";
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
@@ -101,6 +106,33 @@ export class ZodMigrations<Shape extends FillableObject> {
   };
 
   /**
+   * ```ts
+   * const migrations = new ZodMigrations().addMany({
+   *  schema: z.object({
+   *    cheese: z.string(),
+   *    apples: z.array(z.string()),
+   *  }),
+   *  defaultValues: {
+   *    cheese: "cheddar",
+   *    apples: ["granny smith", "red delicious"]
+   *  },
+   * });
+   * ```
+   */
+  addMany = <Schema extends ZodSchema<NonMergeObject<Shape>, any, any>>({
+    defaultValues,
+    schema,
+  }: {
+    schema: Schema;
+    defaultValues: z.infer<Schema>;
+  }) => {
+    return this.mutate<Merge<Shape, z.infer<Schema>>>(() =>
+      // @ts-ignore
+      mutators.addMany({ defaultValues, schema })
+    );
+  };
+
+  /**
    * Renames a key in your schema
    */
   rename = <SourceKey extends keyof Shape, DestinationKey extends string>({
@@ -111,6 +143,19 @@ export class ZodMigrations<Shape extends FillableObject> {
     destination: DestinationKey;
   }) => {
     return this.mutate(() => mutators.rename(source, destination));
+  };
+
+  /**
+   *  renames many keys at the same time
+   *
+   *
+   */
+  renameMany = <Renames extends Partial<Readonly<Record<keyof Shape, string>>>>(
+    renames: Renames
+  ) => {
+    return this.mutate<RenameManyReturn<Shape, Renames>>(() =>
+      mutators.renameMany<Shape, Renames>({ renames })
+    );
   };
 
   /**
@@ -126,6 +171,7 @@ export class ZodMigrations<Shape extends FillableObject> {
     createMutator: (_input: Shape) => Mutator<Shape, T>
   ) => {
     const mutator = createMutator(undefined as any as Shape);
+
     mutator.beforeMutate({
       paths: this.paths,
     });
@@ -244,6 +290,16 @@ export class ZodMigrations<Shape extends FillableObject> {
       this.transform,
       (schema as any).passthrough() as typeof schema
     );
+  };
+
+  __clone = () => {
+    return new ZodMigrations({
+      mutators: [...this.mutators],
+      nestedPaths: [...this.nestedPaths],
+      paths: [...this.paths],
+      schemaEvolutionCount: this.schemaEvolutionCount,
+      versions: this.versions,
+    });
   };
 }
 
