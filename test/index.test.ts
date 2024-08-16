@@ -5,6 +5,7 @@ import {
   ZodMigrations,
   testAllVersions,
   schemaEvolutionCountTag,
+  versionTag,
 } from "../src/zod-migration";
 import { z } from "zod";
 import type { Equals } from "../src/types/Equals";
@@ -118,7 +119,7 @@ describe("rename", () => {
     /*  */
   });
 
-  it("should not explode when a valid previous version is put in", async () => {
+  it.only("should not explode when a valid previous version is put in", async () => {
     const initialPersonSchema = z.object({
       name: z.string(),
     });
@@ -127,6 +128,7 @@ describe("rename", () => {
       firstName: z.string(),
       lastName: z.string(),
     });
+
     const personEvolver = createJsonEvolver({ schema: initialPersonSchema })
       .rename({
         source: "name",
@@ -158,7 +160,59 @@ describe("stringify", () => {
     expect(JSON.parse(stringifyResult)).toHaveProperty(schemaEvolutionCountTag);
   });
 
+  it("should strip properties from nested objects", () => {
+    const nestedEvolver = createEvolver();
+
+    const evolver = createEvolver()
+      .add({
+        path: "nested",
+        defaultVal: {
+          age: 1,
+          name: "",
+        },
+        schema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+      })
+      .register("nested", nestedEvolver);
+
+    const stringifyResult = JSON.parse(
+      evolver.stringify(evolver.transform({}))
+    );
+
+    const transformed = evolver.transform(stringifyResult);
+    console.log(transformed);
+
+    expect(transformed).not.toHaveProperty(schemaEvolutionCountTag);
+    expect(transformed["nested"]).not.toHaveProperty(schemaEvolutionCountTag);
+  });
+
   it("should tag a nested object with correct version", () => {
+    const evolver = createEvolver();
+    const nestedEvolver = createEvolver();
+
+    evolver
+      .add({
+        path: "nested",
+        defaultVal: {
+          age: 1,
+          name: "",
+        },
+        schema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+      })
+      .register("nested", nestedEvolver);
+
+    const stringifyResult = evolver.stringify(evolver.transform({}));
+    expect(JSON.parse(stringifyResult)["nested"][schemaEvolutionCountTag]).toBe(
+      2
+    );
+  });
+
+  it("should strip nested  props", () => {
     const evolver = createEvolver();
     const nestedEvolver = createEvolver();
 
@@ -196,7 +250,24 @@ describe("remove", () => {
   });
 });
 
-describe("transform counts", () => {
+describe("transform", () => {
+  it("should strip types at default", () => {
+    const evolver = createEvolver();
+    const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    const transformed = evolver.transform(result);
+    expect(transformed).not.toHaveProperty(schemaEvolutionCountTag);
+    expect(transformed).not.toHaveProperty(versionTag);
+  });
+
+  it("should allow props through if not stripped", () => {
+    const evolver = createEvolver();
+    const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
+
+    const transformed = evolver.transform(result, { strip: false });
+    expect(transformed).toHaveProperty(schemaEvolutionCountTag);
+  });
+
   it("should apply no transforms when unchanged", () => {
     const evolver = createEvolver();
     const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));

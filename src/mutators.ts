@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { z, type AnyZodObject, type ZodSchema } from "zod";
+import { z, ZodObject, type AnyZodObject, type ZodSchema } from "zod";
 import type {
   FillableObject,
   Mutator,
@@ -8,6 +8,7 @@ import type {
   RenameManyReturn,
 } from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
+import { ZodMigrations } from "./zod-migration";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
@@ -34,11 +35,44 @@ const add = <
     up,
     // @ts-ignore
     isValid: (input: unknown) => isValid(input?.[path], schema),
-    rewritePaths: (input) => [...input, path],
+    rewritePaths: (input) => [...input, { path, schema }],
     beforeMutate: ({ paths }) => {
-      if (paths.includes(path))
+      if (paths.some((pathData) => pathData.path === path))
         throw new Error(`'${path}' already exists in your JsonEvolver`);
     },
+  } satisfies Mutator<Shape, ReturnType<typeof up>>;
+};
+
+const addNestedPath = <
+  Shape extends FillableObject,
+  Schema extends ZodSchema,
+  Path extends string
+>({
+  path,
+  schema,
+  defaultVal,
+  nestedMigrator,
+}: {
+  path: Path;
+  defaultVal: z.infer<Schema>;
+  schema: Schema;
+  nestedMigrator: ZodMigrations<any>;
+}) => {
+  const up = (input: Shape) => {
+    return addProp(nestedMigrator.transform(input), path, defaultVal);
+  };
+
+  return {
+    tag: "addNested",
+    up,
+    // @ts-ignore
+    isValid: (input: unknown) => isValid(input?.[path], schema),
+    rewritePaths: (input) => [...input, { path, schema }],
+    beforeMutate: ({ paths }) => {
+      if (paths.find((pathData) => pathData.path === path))
+        throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
+    nestedMigrator: nestedMigrator,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -54,7 +88,7 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
     tag: "removeOne",
     isValid: (input) => !(path in input),
     rewritePaths: (input) =>
-      input.filter((pathInEvolver) => pathInEvolver !== path),
+      input.filter((pathInEvolver) => pathInEvolver.path !== path),
     beforeMutate: () => {
       // do nothing, inputs parsed in typesystem
     },
@@ -99,7 +133,7 @@ const rename = <
     // @ts-ignore
     isValid: (input) => destination in input && !(source in input),
     beforeMutate: ({ paths }) => {
-      if (paths.includes(destination)) {
+      if (paths.some((pathData) => pathData.path === destination)) {
         // @ts-ignore
         throw new Error(
           `Cannot rename '${
@@ -109,14 +143,37 @@ const rename = <
       }
     },
     rewritePaths: (paths) => {
-      return [...paths, destination].filter((p) => p !== source);
+      console.log({ source, destination, paths: paths.map((p) => p.path) });
+      const existingPathData = paths.find(
+        (pathData) => pathData.path === source
+      );
+
+      console.log("paths");
+      if (!existingPathData) {
+        throw new Error(
+          `Trying to rewrite ${source.toString()} to ${destination} but cannot find ${source.toString()} in paths array`
+        );
+      }
+
+      const result = [
+        ...paths,
+        { ...existingPathData, path: destination },
+      ].filter((p) => p.path !== source);
+
+      console.log({
+        paths: paths.map((p) => p.path),
+        result: result.map((p) => p.path),
+        source,
+        destination,
+      });
+      return result;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
 const addMany = <
   Shape extends FillableObject,
-  Schema extends ZodSchema<NonMergeObject<Shape>, any, any>
+  Schema extends ZodObject<NonMergeObject<Shape>, any, any>
 >({
   defaultValues,
   schema,
@@ -144,8 +201,15 @@ const addMany = <
     beforeMutate: () => {
       // Do nothing, should be accounted for
     },
+
     // @ts-ignore
-    rewritePaths: (paths) => [...paths, ...Object.keys(schema.shape)],
+    rewritePaths: (paths) => [
+      ...paths,
+      ...Object.entries(schema.shape).map((path, schema) => ({
+        path,
+        schema,
+      })),
+    ],
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -192,10 +256,16 @@ const renameMany = <
       // Do nothing, should be accounted for
     },
     rewritePaths: (paths) => {
-      const values = Object.values(renames) as string[];
-      return [...paths, ...values].filter((p) =>
-        Object.keys(renames).includes(p)
-      );
+      const keys = Object.keys(renames) as (keyof typeof renames)[];
+
+      return paths.map((pathData) => {
+        return {
+          ...pathData,
+          path: keys.includes(pathData.path as any)
+            ? renames[pathData.path as keyof typeof renames]!
+            : pathData.path!,
+        };
+      });
     },
   } satisfies Mutator<Shape, RenameManyReturn<Shape, Renames>>;
 };
@@ -203,6 +273,7 @@ const renameMany = <
 export const mutators = {
   add,
   addMany,
+  addNestedPath,
   removeOne,
   removeMany,
   rename,

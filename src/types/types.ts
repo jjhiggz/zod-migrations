@@ -15,13 +15,21 @@ import type {
   Split,
   IfNever,
 } from "type-fest";
+import { ZodSchema } from "zod";
 
 export type Mutator<Shape, ReturnShape> = {
   tag: string;
   up: (input: Shape) => ReturnShape;
   isValid: (input: Shape) => boolean;
-  rewritePaths: (input: string[]) => string[];
-  beforeMutate: ({ paths }: { paths: string[] }) => any;
+  rewritePaths: (input: PathData[]) => PathData[];
+  beforeMutate: ({ paths }: { paths: PathData[] }) => any;
+  nestedMigrator?: ZodMigrations<any>;
+};
+
+export type PathData = {
+  path: string;
+  nestedMigrator?: ZodMigrations<any>;
+  schema: ZodSchema<any>;
 };
 
 export type FillableObject = Merge<{}, {}>;
