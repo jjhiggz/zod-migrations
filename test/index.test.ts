@@ -555,13 +555,12 @@ function testSafeSchemaReturnType(): 1 {
     menus: z.array(menuSchema),
   });
 
-  const evolver = createZodMigrations({ schema: restaurantSchema })
-    .add({
-      path: "menus",
-      schema: z.array(menuSchema),
-      defaultVal: [],
-    })
-    .register("menus", createZodMigrations({ schema: z.array(menuSchema) }));
+  const evolver = createZodMigrations({ schema: restaurantSchema }).addNested({
+    path: "menus",
+    schema: z.array(menuSchema),
+    defaultVal: [],
+    nestedMigrator: createZodMigrations({ schema: menuSchema }),
+  });
 
   const safeSchema: typeof restaurantWithChildren = evolver.safeSchema(
     restaurantWithChildren

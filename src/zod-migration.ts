@@ -11,7 +11,7 @@ import type {
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Merge, Simplify } from "type-fest";
-import { omit, pick, pipe, reduce, set } from "remeda";
+import { omit } from "remeda";
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
@@ -268,17 +268,6 @@ export class ZodMigrations<Shape extends FillableObject> {
     }
 
     return input;
-  };
-
-  /**
-   * register a nested schema
-   */
-  register = <T extends FillableObject>(
-    key: keyof Shape,
-    jsonEvolution: ZodMigrations<T>
-  ) => {
-    this.nestedPaths.push([key, jsonEvolution]);
-    return this.next<Shape>();
   };
 
   preStringify = (rawInput: any): any => {
