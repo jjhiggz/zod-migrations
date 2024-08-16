@@ -11,7 +11,7 @@ import type {
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Merge, Simplify } from "type-fest";
-import { omit } from "remeda";
+import { omit, pick, pipe, reduce, set } from "remeda";
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
@@ -208,6 +208,20 @@ export class ZodMigrations<Shape extends FillableObject> {
     return this.next<T>() as ZodMigrations<T>;
   };
 
+  stripTags = (input: any) => {
+    const schemaEvolutionCount = input[schemaEvolutionCountTag] ?? null;
+    const versionTagVal = input[versionTag] ?? null;
+
+    if (schemaEvolutionCount !== null) {
+      input = omit(input, [schemaEvolutionCountTag]);
+    }
+
+    if (versionTagVal !== null) {
+      input = omit(input, [versionTag]);
+    }
+    return input;
+  };
+
   /**
    * Transform any previous version of your data into the most modern form
    */
@@ -216,17 +230,14 @@ export class ZodMigrations<Shape extends FillableObject> {
     { strip }: { strip: boolean } = { strip: true }
   ): Shape => {
     const schemaEvolutionCount = input[schemaEvolutionCountTag] ?? null;
-    const versionTagVal = input[versionTag] ?? null;
 
-    if (schemaEvolutionCount !== null && strip) {
-      input = omit(input, [schemaEvolutionCountTag]);
-    }
-    if (versionTagVal !== null && strip) {
-      input = omit(input, [versionTag]);
+    if (strip) {
+      input = this.stripTags(input);
     }
 
     const firstInvalidMutationIndex = (() => {
       if (schemaEvolutionCount) return 0;
+
       return this.mutators.findIndex((mutator) => {
         return !mutator.isValid(input);
       });
@@ -235,12 +246,25 @@ export class ZodMigrations<Shape extends FillableObject> {
     if (firstInvalidMutationIndex === -1 && !schemaEvolutionCount) return input;
 
     const mutators = schemaEvolutionCount
-      ? this.mutators.slice(schemaEvolutionCount)
+      ? this.mutators.filter((mutator, index) => {
+          if (mutator.nestedMigrator) {
+            return true;
+          }
+          return index >= schemaEvolutionCount;
+        })
       : this.mutators.slice(firstInvalidMutationIndex);
 
     for (const mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
-      input = mutator.up(input);
+      if (mutator.nestedMigrator) {
+        input = mutator.up(input);
+        input[mutator.nestedMigrator.path] =
+          mutator.nestedMigrator.migrator.transform(
+            input[mutator.nestedMigrator.path]
+          );
+      } else {
+        input = mutator.up(input);
+      }
     }
 
     return input;
@@ -257,37 +281,28 @@ export class ZodMigrations<Shape extends FillableObject> {
     return this.next<Shape>();
   };
 
+  preStringify = (rawInput: any): any => {
+    const input = structuredClone(rawInput);
+
+    input[schemaEvolutionCountTag] = this.schemaEvolutionCount;
+
+    this.paths.forEach((pathData) => {
+      if (pathData.nestedMigrator) {
+        const valueAtPath = input[pathData.path];
+
+        input[pathData.path] =
+          pathData.nestedMigrator.preStringify(valueAtPath);
+      }
+    });
+
+    return input;
+  };
+
   /**
    * stringify your schema for when you store it in your database
    */
-  stringify = (rawInput: any, path: string[] = []): any => {
-    const input = structuredClone(rawInput);
-
-    if (Array.isArray(input)) {
-      return input.map((val) => this.stringify(val, [...path]));
-    }
-
-    if (Object(input) === input) {
-      const registeredPath = this.nestedPaths.find(
-        (nestedPath) => nestedPath[0] === path.join("/")
-      );
-      const entries = Object.entries(input).map(([key, value]) => {
-        return [key, this.stringify(value, [...path, key])];
-      });
-
-      const fullObject = Object.fromEntries([...entries]);
-
-      if (path.length === 0) {
-        fullObject[schemaEvolutionCountTag] = this.schemaEvolutionCount;
-        return JSON.stringify(fullObject, null, 2);
-      } else if (registeredPath) {
-        fullObject[schemaEvolutionCountTag] =
-          registeredPath[1].schemaEvolutionCount;
-        return fullObject;
-      }
-    }
-
-    return input;
+  stringify = (rawInput: any): any => {
+    return JSON.stringify(this.preStringify(rawInput));
   };
 
   /**
@@ -340,7 +355,7 @@ export class ZodMigrations<Shape extends FillableObject> {
   };
 }
 
-export const createJsonEvolver = <T extends object>(_input: {
+export const createZodMigrations = <T extends object>(_input: {
   schema: ZodSchema<T>;
 }) => {
   // @ts-ignore

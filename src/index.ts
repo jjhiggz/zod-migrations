@@ -1,6 +1,6 @@
 import {
   ZodMigrations,
-  createJsonEvolver,
+  createZodMigrations,
   schemaEvolutionCountTag,
   testAllVersions,
   versionTag,
@@ -10,7 +10,7 @@ import { mutators } from "./mutators";
 
 export {
   ZodMigrations,
-  createJsonEvolver,
+  createZodMigrations as createJsonEvolver,
   schemaEvolutionCountTag,
   testAllVersions,
   versionTag,

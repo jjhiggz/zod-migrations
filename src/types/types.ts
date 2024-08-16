@@ -23,7 +23,10 @@ export type Mutator<Shape, ReturnShape> = {
   isValid: (input: Shape) => boolean;
   rewritePaths: (input: PathData[]) => PathData[];
   beforeMutate: ({ paths }: { paths: PathData[] }) => any;
-  nestedMigrator?: ZodMigrations<any>;
+  nestedMigrator?: {
+    migrator: ZodMigrations<any>;
+    path: string;
+  };
 };
 
 export type PathData = {

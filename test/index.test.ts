@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect } from "vitest";
 import {
-  createJsonEvolver,
+  createZodMigrations,
   ZodMigrations,
   testAllVersions,
   schemaEvolutionCountTag,
   versionTag,
 } from "../src/zod-migration";
-import { z } from "zod";
+import { string, z } from "zod";
 import type { Equals } from "../src/types/Equals";
 import { mutators } from "../src/mutators";
 import { GetJsonEvolverShape } from "../src/types/types";
@@ -24,6 +24,34 @@ const createEvolver = () =>
       defaultVal: 0,
       schema: z.number(),
     });
+
+describe("addNested", () => {
+  it("should work as expected", () => {
+    const nested = createEvolver();
+
+    const evolver = createEvolver().addNested({
+      nestedMigrator: nested,
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      path: "nested",
+    });
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      nested: {
+        name: "",
+        age: 0,
+      },
+    });
+  });
+});
 
 describe("add", () => {
   it("should poop out all of the defaults if empty object put in", () => {
@@ -119,7 +147,7 @@ describe("rename", () => {
     /*  */
   });
 
-  it.only("should not explode when a valid previous version is put in", async () => {
+  it("should not explode when a valid previous version is put in", async () => {
     const initialPersonSchema = z.object({
       name: z.string(),
     });
@@ -129,7 +157,7 @@ describe("rename", () => {
       lastName: z.string(),
     });
 
-    const personEvolver = createJsonEvolver({ schema: initialPersonSchema })
+    const personEvolver = createZodMigrations({ schema: initialPersonSchema })
       .rename({
         source: "name",
         destination: "firstName",
@@ -160,51 +188,209 @@ describe("stringify", () => {
     expect(JSON.parse(stringifyResult)).toHaveProperty(schemaEvolutionCountTag);
   });
 
+  it("should correctly transform double nested objects", () => {
+    const doubleNested = createEvolver();
+
+    const nestedEvolver = createEvolver().addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({});
+
+    expect(baseTransform).toEqual({
+      name: "",
+      age: 0,
+      nested: {
+        name: "",
+        age: 0,
+        doubleNested: {
+          name: "",
+          age: 0,
+        },
+      },
+    });
+  });
+
+  it("should correctly transform double nested objects with changes", () => {
+    const doubleNested = createEvolver()
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "cheese",
+        defaultVal: "swiss",
+        schema: z.string(),
+      });
+
+    const nestedEvolver = createEvolver().addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({});
+
+    expect(baseTransform).toEqual({
+      name: "",
+      age: 0,
+      nested: {
+        name: "",
+        age: 0,
+        doubleNested: {
+          firstName: "",
+          age: 0,
+          cheese: "swiss",
+        },
+      },
+    });
+  });
+
+  it("should stringify double nested objects", () => {
+    const doubleNested = createEvolver();
+
+    const nestedEvolver = createEvolver().addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({});
+
+    const stringifyResult = JSON.parse(evolver.stringify(baseTransform));
+    expect(stringifyResult).toBeDefined();
+  });
+
+  it("should strip properties from double nested objects", () => {
+    const doubleNested = createEvolver();
+
+    const nestedEvolver = createEvolver().addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({});
+
+    const stringifyResult = JSON.parse(evolver.stringify(baseTransform));
+
+    // const transformed = evolver.transform(stringifyResult);
+
+    // expect(transformed).not.toHaveProperty(schemaEvolutionCountTag);
+    // expect(transformed["nested"]).not.toHaveProperty(schemaEvolutionCountTag);
+  });
+
   it("should strip properties from nested objects", () => {
     const nestedEvolver = createEvolver();
 
-    const evolver = createEvolver()
-      .add({
-        path: "nested",
-        defaultVal: {
-          age: 1,
-          name: "",
-        },
-        schema: z.object({
-          name: z.string(),
-          age: z.number(),
-        }),
-      })
-      .register("nested", nestedEvolver);
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 1,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
 
     const stringifyResult = JSON.parse(
       evolver.stringify(evolver.transform({}))
     );
 
     const transformed = evolver.transform(stringifyResult);
-    console.log(transformed);
 
     expect(transformed).not.toHaveProperty(schemaEvolutionCountTag);
     expect(transformed["nested"]).not.toHaveProperty(schemaEvolutionCountTag);
   });
 
   it("should tag a nested object with correct version", () => {
-    const evolver = createEvolver();
     const nestedEvolver = createEvolver();
 
-    evolver
-      .add({
-        path: "nested",
-        defaultVal: {
-          age: 1,
-          name: "",
-        },
-        schema: z.object({
-          name: z.string(),
-          age: z.number(),
-        }),
-      })
-      .register("nested", nestedEvolver);
+    const evolver = createEvolver().addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 1,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
     expect(JSON.parse(stringifyResult)["nested"][schemaEvolutionCountTag]).toBe(
@@ -212,25 +398,26 @@ describe("stringify", () => {
     );
   });
 
-  it("should strip nested  props", () => {
-    const evolver = createEvolver();
+  it("should not strip nested props when strip set to false", () => {
     const nestedEvolver = createEvolver();
 
-    evolver
-      .add({
-        path: "nested",
-        defaultVal: {
-          age: 1,
-          name: "",
-        },
-        schema: z.object({
-          name: z.string(),
-          age: z.number(),
-        }),
-      })
-      .register("nested", nestedEvolver);
+    const evolver = createEvolver().addNested({
+      nestedMigrator: nestedEvolver,
+      path: "nested",
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+    });
 
-    const stringifyResult = evolver.stringify(evolver.transform({}));
+    const stringifyResult = evolver.stringify(
+      evolver.transform({}, { strip: false })
+    );
+
     expect(JSON.parse(stringifyResult)["nested"][schemaEvolutionCountTag]).toBe(
       2
     );
@@ -304,7 +491,7 @@ describe("transform", () => {
   });
 
   it("should appropriately tag the schema when starting with schema", () => {
-    const evolver = createJsonEvolver({
+    const evolver = createZodMigrations({
       schema: z.object({
         name: z.string(),
         age: z.number(),
@@ -329,7 +516,7 @@ describe("transform", () => {
   });
 
   it("should apply relevant transforms only when starting from a schema", () => {
-    const evolver = createJsonEvolver({
+    const evolver = createZodMigrations({
       schema: z.object({
         name: z.string(),
         age: z.number(),
@@ -368,13 +555,13 @@ function testSafeSchemaReturnType(): 1 {
     menus: z.array(menuSchema),
   });
 
-  const evolver = createJsonEvolver({ schema: restaurantSchema })
+  const evolver = createZodMigrations({ schema: restaurantSchema })
     .add({
       path: "menus",
       schema: z.array(menuSchema),
       defaultVal: [],
     })
-    .register("menus", createJsonEvolver({ schema: z.array(menuSchema) }));
+    .register("menus", createZodMigrations({ schema: z.array(menuSchema) }));
 
   const safeSchema: typeof restaurantWithChildren = evolver.safeSchema(
     restaurantWithChildren

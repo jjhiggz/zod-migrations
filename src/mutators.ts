@@ -59,7 +59,7 @@ const addNestedPath = <
   nestedMigrator: ZodMigrations<any>;
 }) => {
   const up = (input: Shape) => {
-    return addProp(nestedMigrator.transform(input), path, defaultVal);
+    return addProp(input, path, defaultVal);
   };
 
   return {
@@ -67,12 +67,15 @@ const addNestedPath = <
     up,
     // @ts-ignore
     isValid: (input: unknown) => isValid(input?.[path], schema),
-    rewritePaths: (input) => [...input, { path, schema }],
+    rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
     beforeMutate: ({ paths }) => {
       if (paths.find((pathData) => pathData.path === path))
         throw new Error(`'${path}' already exists in your JsonEvolver`);
     },
-    nestedMigrator: nestedMigrator,
+    nestedMigrator: {
+      migrator: nestedMigrator,
+      path,
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -143,12 +146,10 @@ const rename = <
       }
     },
     rewritePaths: (paths) => {
-      console.log({ source, destination, paths: paths.map((p) => p.path) });
       const existingPathData = paths.find(
         (pathData) => pathData.path === source
       );
 
-      console.log("paths");
       if (!existingPathData) {
         throw new Error(
           `Trying to rewrite ${source.toString()} to ${destination} but cannot find ${source.toString()} in paths array`
@@ -160,12 +161,6 @@ const rename = <
         { ...existingPathData, path: destination },
       ].filter((p) => p.path !== source);
 
-      console.log({
-        paths: paths.map((p) => p.path),
-        result: result.map((p) => p.path),
-        source,
-        destination,
-      });
       return result;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
@@ -203,13 +198,14 @@ const addMany = <
     },
 
     // @ts-ignore
-    rewritePaths: (paths) => [
-      ...paths,
-      ...Object.entries(schema.shape).map((path, schema) => ({
+    rewritePaths: (paths) => {
+      const newPaths = Object.entries(schema.shape).map(([path, schema]) => ({
         path,
         schema,
-      })),
-    ],
+      }));
+
+      return [...paths, ...newPaths];
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
