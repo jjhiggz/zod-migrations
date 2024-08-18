@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect } from "vitest";
 import {
@@ -7,13 +8,25 @@ import {
   schemaEvolutionCountTag,
   versionTag,
 } from "../src/zod-migration";
-import { string, z } from "zod";
+import { string, z, ZodSchema } from "zod";
 import type { Equals } from "../src/types/Equals";
-import { mutators } from "../src/mutators";
+import { getValidRenames, mutators } from "../src/mutators";
 import { GetJsonEvolverShape } from "../src/types/types";
 
-const createEvolver = () =>
-  new ZodMigrations()
+const basePersonSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+const createEvolver = <EndingSchema extends ZodSchema<any, any>>({
+  endingSchema,
+}: {
+  endingSchema: EndingSchema;
+}) =>
+  createZodMigrations({
+    startingSchema: z.object({}),
+    endingSchema: endingSchema,
+  })
     .add({
       defaultVal: "",
       path: "name",
@@ -25,22 +38,101 @@ const createEvolver = () =>
       schema: z.number(),
     });
 
+describe("getValidRenames", () => {
+  it("should find one valid rename", () => {
+    expect(getValidRenames([["name", "firstName"]], "name")).toEqual([
+      "name",
+      "firstName",
+    ]);
+  });
+
+  it("should work if I rename twice", () => {
+    expect(
+      getValidRenames(
+        [
+          ["name", "firstName"],
+          ["firstName", "name"],
+        ],
+        "name"
+      )
+    ).toEqual(["name", "firstName"]);
+  });
+
+  it("should work with multiple renames", () => {
+    expect(
+      getValidRenames(
+        [
+          ["name", "name2"],
+          ["name2", "name3"],
+        ],
+        "name"
+      )
+    ).toEqual(["name", "name2", "name3"]);
+  });
+});
+
+describe("validation rules", () => {
+  it("should account for renames ", () => {
+    const doubleNestedSchema = basePersonSchema.omit({ name: true }).merge(
+      z.object({
+        firstName: z.string(),
+        cheese: z.string(),
+        plant: z.string(),
+      })
+    );
+    const doubleNested = createEvolver({
+      endingSchema: doubleNestedSchema,
+    })
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "cheese",
+        defaultVal: "swiss",
+        schema: z.string(),
+      })
+      .add({
+        path: "plant",
+        defaultVal: "tomato",
+        schema: z.string(),
+      });
+
+    expect(
+      doubleNested.transform({
+        age: 10,
+        firstName: "jordan",
+        cheese: "cheddar",
+      })
+    ).toEqual({
+      age: 10,
+      firstName: "jordan",
+      plant: "tomato",
+      cheese: "cheddar",
+    });
+  });
+});
+
 describe("addNested", () => {
   it("should work as expected", () => {
-    const nested = createEvolver();
-
-    const evolver = createEvolver().addNested({
-      nestedMigrator: nested,
-      schema: z.object({
-        name: z.string(),
-        age: z.number(),
-      }),
-      defaultVal: {
-        age: 0,
-        name: "",
-      },
-      path: "nested",
+    const nested = createEvolver({
+      endingSchema: z.object({ name: z.string() }),
     });
+
+    const evolver = createEvolver({ endingSchema: basePersonSchema }).addNested(
+      {
+        nestedMigrator: nested,
+        schema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+        defaultVal: {
+          age: 0,
+          name: "",
+        },
+        path: "nested",
+      }
+    );
 
     expect(evolver.transform({})).toEqual({
       name: "",
@@ -55,7 +147,7 @@ describe("addNested", () => {
 
 describe("add", () => {
   it("should poop out all of the defaults if empty object put in", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
 
     expect(evolver.transform({})).toEqual({
       name: "",
@@ -83,7 +175,7 @@ describe("add", () => {
   });
 
   it("should throw an error for name conflict", async () => {
-    const evolver = createEvolver().add({
+    const evolver = createEvolver({ endingSchema: basePersonSchema }).add({
       defaultVal: "",
       path: "random",
       schema: z.string(),
@@ -103,7 +195,13 @@ describe("add", () => {
 
 describe("rename", () => {
   it("should poop out the correct type", () => {
-    const evolverBefore = createEvolver();
+    const evolverBefore = createEvolver({
+      endingSchema: basePersonSchema.omit({ name: true }).merge(
+        z.object({
+          firstName: z.string(),
+        })
+      ),
+    });
 
     const evolver = evolverBefore.rename({
       source: "name",
@@ -113,8 +211,16 @@ describe("rename", () => {
     expect(evolver.transform({}).firstName).toEqual("");
     expect(evolver.transform({ name: "jon" }).firstName).toEqual("jon");
   });
+
   it("should throw an error for name conflict", async () => {
-    const evolver = createEvolver()
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          random: z.string(),
+          random2: z.string(),
+        })
+      ),
+    })
       .add({
         path: "random",
         schema: z.string(),
@@ -157,7 +263,10 @@ describe("rename", () => {
       lastName: z.string(),
     });
 
-    const personEvolver = createZodMigrations({ schema: initialPersonSchema })
+    const personEvolver = createZodMigrations({
+      startingSchema: initialPersonSchema,
+      endingSchema: currentPersonSchema,
+    })
       .rename({
         source: "name",
         destination: "firstName",
@@ -167,7 +276,7 @@ describe("rename", () => {
         schema: z.string(),
         defaultVal: "",
       })
-      .safeSchema(currentPersonSchema);
+      .safeSchema();
 
     const result = await personEvolver
       .parseAsync({ firstName: "jon" })
@@ -182,16 +291,18 @@ describe("rename", () => {
 
 describe("stringify", () => {
   it("should tag an unnested object", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
 
     const stringifyResult = evolver.stringify(evolver.transform({}));
     expect(JSON.parse(stringifyResult)).toHaveProperty(schemaEvolutionCountTag);
   });
 
   it("should correctly transform double nested objects", () => {
-    const doubleNested = createEvolver();
+    const doubleNested = createEvolver({ endingSchema: basePersonSchema });
 
-    const nestedEvolver = createEvolver().addNested({
+    const nestedEvolver = createEvolver({
+      endingSchema: basePersonSchema,
+    }).addNested({
       path: "doubleNested",
       defaultVal: {
         age: 0,
@@ -201,18 +312,20 @@ describe("stringify", () => {
       schema: z.object({ name: z.string(), age: z.number() }),
     });
 
-    const evolver = createEvolver().addNested({
-      path: "nested",
-      nestedMigrator: nestedEvolver,
-      defaultVal: {
-        age: 0,
-        name: "",
-      },
-      schema: z.object({
-        name: z.string(),
-        age: z.number(),
-      }),
-    });
+    const evolver = createEvolver({ endingSchema: basePersonSchema }).addNested(
+      {
+        path: "nested",
+        nestedMigrator: nestedEvolver,
+        defaultVal: {
+          age: 0,
+          name: "",
+        },
+        schema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+      }
+    );
 
     const baseTransform = evolver.transform({});
 
@@ -230,8 +343,211 @@ describe("stringify", () => {
     });
   });
 
+  it("should parse nested objects into the newest form", () => {
+    const doubleNestedSchema = basePersonSchema.omit({ name: true }).merge(
+      z.object({
+        firstName: z.string(),
+        cheese: z.string(),
+        plant: z.string(),
+      })
+    );
+
+    const nestedSchema = basePersonSchema.merge(
+      z.object({
+        doubleNested: doubleNestedSchema,
+      })
+    );
+
+    const doubleNested = createEvolver({
+      endingSchema: doubleNestedSchema,
+    })
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "cheese",
+        defaultVal: "swiss",
+        schema: z.string(),
+      })
+      .add({
+        path: "plant",
+        defaultVal: "tomato",
+        schema: z.string(),
+      });
+
+    const nestedEvolver = createEvolver({
+      endingSchema: nestedSchema,
+    }).addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
+
+    const evolver = createEvolver({ endingSchema: schema }).addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({
+      name: "jon",
+      age: 10,
+      nested: {
+        name: "jim",
+        age: 20,
+        doubleNested: {
+          cheese: "cheddar",
+          firstName: "jordan",
+          age: 30,
+        },
+      },
+    });
+
+    expect(baseTransform).toEqual({
+      name: "jon",
+      age: 10,
+      nested: {
+        name: "jim",
+        age: 20,
+        doubleNested: {
+          firstName: "jordan",
+          age: 30,
+          cheese: "cheddar",
+          plant: "tomato",
+        },
+      },
+    });
+  });
+
+  it("should parse deeply nested objects into the newest form", () => {
+    const doubleNestedSchema = basePersonSchema.omit({ name: true }).merge(
+      z.object({
+        firstName: z.string(),
+        cheese: z.string(),
+        plant: z.string(),
+      })
+    );
+
+    const nestedSchema = basePersonSchema.merge(
+      z.object({
+        doubleNested: doubleNestedSchema,
+      })
+    );
+
+    const doubleNested = createEvolver({
+      endingSchema: doubleNestedSchema,
+    })
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "cheese",
+        defaultVal: "swiss",
+        schema: z.string(),
+      })
+      .add({
+        path: "plant",
+        defaultVal: "tomato",
+        schema: z.string(),
+      });
+
+    const nestedEvolver = createEvolver({
+      endingSchema: nestedSchema,
+    }).addNested({
+      path: "doubleNested",
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      nestedMigrator: doubleNested,
+      schema: z.object({ name: z.string(), age: z.number() }),
+    });
+
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
+
+    const evolver = createEvolver({ endingSchema: schema }).addNested({
+      path: "nested",
+      nestedMigrator: nestedEvolver,
+      defaultVal: {
+        age: 0,
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+    });
+
+    const baseTransform = evolver.transform({
+      name: "jon",
+      age: 10,
+      nested: {
+        name: "jim",
+        age: 20,
+        doubleNested: {
+          cheese: "cheddar",
+          name: "jordan",
+          age: 30,
+        },
+      },
+    });
+
+    expect(baseTransform).toEqual({
+      name: "jon",
+      age: 10,
+      nested: {
+        name: "jim",
+        age: 20,
+        doubleNested: {
+          firstName: "jordan",
+          age: 30,
+          cheese: "swiss",
+          plant: "tomato",
+        },
+      },
+    });
+  });
+
   it("should correctly transform double nested objects with changes", () => {
-    const doubleNested = createEvolver()
+    const doubleNestedSchema = basePersonSchema.omit({ name: true }).merge(
+      z.object({
+        firstName: z.string(),
+        cheese: z.string(),
+      })
+    );
+
+    const nestedSchema = basePersonSchema.merge(
+      z.object({
+        doubleNested: doubleNestedSchema,
+      })
+    );
+
+    const doubleNested = createEvolver({
+      endingSchema: doubleNestedSchema,
+    })
       .rename({
         source: "name",
         destination: "firstName",
@@ -242,7 +558,9 @@ describe("stringify", () => {
         schema: z.string(),
       });
 
-    const nestedEvolver = createEvolver().addNested({
+    const nestedEvolver = createEvolver({
+      endingSchema: nestedSchema,
+    }).addNested({
       path: "doubleNested",
       defaultVal: {
         age: 0,
@@ -252,7 +570,13 @@ describe("stringify", () => {
       schema: z.object({ name: z.string(), age: z.number() }),
     });
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          nested: nestedSchema,
+        })
+      ),
+    }).addNested({
       path: "nested",
       nestedMigrator: nestedEvolver,
       defaultVal: {
@@ -283,9 +607,17 @@ describe("stringify", () => {
   });
 
   it("should stringify double nested objects", () => {
-    const doubleNested = createEvolver();
+    const doubleNested = createEvolver({ endingSchema: basePersonSchema });
 
-    const nestedEvolver = createEvolver().addNested({
+    const nestedSchema = basePersonSchema.merge(
+      z.object({
+        doubleNested: basePersonSchema,
+      })
+    );
+
+    const nestedEvolver = createEvolver({
+      endingSchema: nestedSchema,
+    }).addNested({
       path: "doubleNested",
       defaultVal: {
         age: 0,
@@ -295,7 +627,13 @@ describe("stringify", () => {
       schema: z.object({ name: z.string(), age: z.number() }),
     });
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          nested: nestedSchema,
+        })
+      ),
+    }).addNested({
       path: "nested",
       nestedMigrator: nestedEvolver,
       defaultVal: {
@@ -315,9 +653,24 @@ describe("stringify", () => {
   });
 
   it("should strip properties from double nested objects", () => {
-    const doubleNested = createEvolver();
+    const doubleSchema = basePersonSchema;
+    const nestedSchema = basePersonSchema.merge(
+      z.object({
+        doubleNested: doubleSchema,
+      })
+    );
 
-    const nestedEvolver = createEvolver().addNested({
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
+
+    const doubleNested = createEvolver({ endingSchema: doubleSchema });
+
+    const nestedEvolver = createEvolver({
+      endingSchema: nestedSchema,
+    }).addNested({
       path: "doubleNested",
       defaultVal: {
         age: 0,
@@ -327,7 +680,9 @@ describe("stringify", () => {
       schema: z.object({ name: z.string(), age: z.number() }),
     });
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({
+      endingSchema: schema,
+    }).addNested({
       path: "nested",
       nestedMigrator: nestedEvolver,
       defaultVal: {
@@ -351,9 +706,15 @@ describe("stringify", () => {
   });
 
   it("should strip properties from nested objects", () => {
-    const nestedEvolver = createEvolver();
+    const nestedSchema = basePersonSchema;
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
+    const nestedEvolver = createEvolver({ endingSchema: nestedSchema });
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({ endingSchema: schema }).addNested({
       path: "nested",
       nestedMigrator: nestedEvolver,
       defaultVal: {
@@ -377,9 +738,15 @@ describe("stringify", () => {
   });
 
   it("should tag a nested object with correct version", () => {
-    const nestedEvolver = createEvolver();
+    const nestedSchema = basePersonSchema;
+    const nestedEvolver = createEvolver({ endingSchema: nestedSchema });
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({ endingSchema: schema }).addNested({
       path: "nested",
       nestedMigrator: nestedEvolver,
       defaultVal: {
@@ -399,9 +766,15 @@ describe("stringify", () => {
   });
 
   it("should not strip nested props when strip set to false", () => {
-    const nestedEvolver = createEvolver();
+    const nestedSchema = basePersonSchema;
+    const nestedEvolver = createEvolver({ endingSchema: nestedSchema });
+    const schema = basePersonSchema.merge(
+      z.object({
+        nested: nestedSchema,
+      })
+    );
 
-    const evolver = createEvolver().addNested({
+    const evolver = createEvolver({ endingSchema: nestedSchema }).addNested({
       nestedMigrator: nestedEvolver,
       path: "nested",
       schema: z.object({
@@ -426,7 +799,9 @@ describe("stringify", () => {
 
 describe("remove", () => {
   it("should poop out the right thing", () => {
-    const evolver = createEvolver().remove("age");
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.omit({ age: true }),
+    }).remove("age");
 
     expect(evolver.transform({})).toEqual({ name: "" });
     expect(evolver.transform({ name: "Jon" })).toEqual({ name: "Jon" });
@@ -439,7 +814,7 @@ describe("remove", () => {
 
 describe("transform", () => {
   it("should strip types at default", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
     const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
 
     const transformed = evolver.transform(result);
@@ -448,7 +823,7 @@ describe("transform", () => {
   });
 
   it("should allow props through if not stripped", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
     const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
 
     const transformed = evolver.transform(result, { strip: false });
@@ -456,7 +831,7 @@ describe("transform", () => {
   });
 
   it("should apply no transforms when unchanged", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
     const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
 
     evolver.transform(result);
@@ -465,7 +840,7 @@ describe("transform", () => {
   });
 
   it("should apply remaining transforms when changed", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
     const result = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
 
     const evolver2 = evolver
@@ -485,17 +860,19 @@ describe("transform", () => {
   });
 
   it("should only apply necessary transforms", () => {
-    const evolver = createEvolver();
+    const evolver = createEvolver({ endingSchema: basePersonSchema });
     evolver.transform({ name: "jon" });
     expect(evolver.__get_private_data().transformsAppliedCount).toBe(1);
   });
 
   it("should appropriately tag the schema when starting with schema", () => {
+    const startingSchema = z.object({
+      name: z.string(),
+      age: z.number(),
+    });
     const evolver = createZodMigrations({
-      schema: z.object({
-        name: z.string(),
-        age: z.number(),
-      }),
+      startingSchema,
+      endingSchema: startingSchema,
     });
 
     const stringified = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
@@ -517,7 +894,7 @@ describe("transform", () => {
 
   it("should apply relevant transforms only when starting from a schema", () => {
     const evolver = createZodMigrations({
-      schema: z.object({
+      startingSchema: z.object({
         name: z.string(),
         age: z.number(),
       }),
@@ -542,72 +919,15 @@ describe("transform", () => {
   });
 });
 
-function testSafeSchemaReturnType(): 1 {
-  const restaurantSchema = z.object({
-    name: z.string(),
-  });
-
-  const menuSchema = z.object({
-    menuName: z.string(),
-  });
-
-  const restaurantWithChildren = restaurantSchema.extend({
-    menus: z.array(menuSchema),
-  });
-
-  const evolver = createZodMigrations({ schema: restaurantSchema }).addNested({
-    path: "menus",
-    schema: z.array(menuSchema),
-    defaultVal: [],
-    nestedMigrator: createZodMigrations({ schema: menuSchema }),
-  });
-
-  const safeSchema: typeof restaurantWithChildren = evolver.safeSchema(
-    restaurantWithChildren
-  );
-
-  type A = z.infer<typeof restaurantWithChildren>;
-  type B = z.infer<typeof safeSchema>;
-
-  const badEvolver = evolver.remove("name");
-
-  // should be type never if evolver is missing fields in schema
-  const badEvolverSchema = badEvolver.safeSchema(restaurantWithChildren);
-  // @ts-expect-error badEvolver schema should never be equal
-  const a: Equals<
-    z.infer<typeof badEvolverSchema>,
-    z.infer<typeof restaurantWithChildren>
-  > = 1;
-
-  // should explode if schema is missing fields in evolver
-  const otherBadEvolverSchema = badEvolver
-    .add({
-      path: "cheese",
-      defaultVal: "",
-      schema: z.string(),
-    })
-    // @ts-expect-error if schema fields missing
-    .safeSchema(restaurantWithChildren);
-
-  // should
-  type C = z.infer<typeof restaurantWithChildren>;
-  type D = z.infer<typeof safeSchema>;
-
-  const canInstantiateNested: D = {
-    name: "restaurant",
-    menus: [
-      {
-        menuName: "menu 1",
-      },
-    ],
-  };
-
-  return 1 as Equals<A, B>;
-}
-
 describe("mutate", () => {
   it("should work just like add with add mutator", () => {
-    const evolver = createEvolver().mutate(() =>
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          cheese: z.string(),
+        })
+      ),
+    }).mutate(() =>
       mutators.add({
         defaultVal: "swiss",
         path: "cheese",
@@ -623,7 +943,9 @@ describe("mutate", () => {
   });
 
   it("should work with removeOne", () => {
-    const evolver = createEvolver()
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema,
+    })
       .add({
         defaultVal: "",
         path: "cheese",
@@ -638,7 +960,7 @@ describe("mutate", () => {
   });
 
   it("should work with removeMany", () => {
-    const evolver = createEvolver()
+    const evolver = createEvolver({ endingSchema: basePersonSchema })
       .add({
         defaultVal: "",
         path: "cheese",
@@ -658,7 +980,13 @@ describe("mutate", () => {
   });
 
   it("should work with rename", () => {
-    const evolver = createEvolver()
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          pizza: z.string(),
+        })
+      ),
+    })
       .add({
         defaultVal: "",
         path: "cheese",
@@ -677,7 +1005,11 @@ describe("mutate", () => {
 describe("check all versions", () => {
   it("should test all versions", () => {
     testAllVersions({
-      evolver: createEvolver()
+      evolver: createEvolver({
+        endingSchema: basePersonSchema
+          .omit({ name: true })
+          .merge(z.object({ firstName: z.string() })),
+      })
         .rename({
           source: "name",
           destination: "firstName",
@@ -702,7 +1034,14 @@ describe("check all versions", () => {
 
 describe("addMany", () => {
   it("should work with builtin method", () => {
-    const evolver = createEvolver().addMany({
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({
+          cheese: z.string(),
+          poop: z.string(),
+        })
+      ),
+    }).addMany({
       schema: z.object({
         cheese: z.string(),
         poop: z.string(),
@@ -741,7 +1080,11 @@ describe("addMany", () => {
   });
 
   it("should work with merge", () => {
-    const evolver = createEvolver().mutate(() =>
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema.merge(
+        z.object({ cheese: z.string(), poop: z.string() })
+      ),
+    }).mutate(() =>
       mutators.addMany({
         defaultValues: {
           cheese: "",
@@ -793,7 +1136,24 @@ describe("renameMany", () => {
       name: "newName",
     } as const;
 
-    const evolver = createEvolver()
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema
+        .merge(
+          z.object({
+            dummy: z.string(),
+          })
+        )
+        .omit({
+          age: true,
+          name: true,
+        })
+        .merge(
+          z.object({
+            newAge: z.number(),
+            newName: z.string(),
+          })
+        ),
+    })
       .add({
         path: "dummy",
         defaultVal: "",
@@ -833,7 +1193,17 @@ describe("renameMany", () => {
     });
   });
   it("should work for rename many", () => {
-    const evolver = createEvolver()
+    const evolver = createEvolver({
+      endingSchema: basePersonSchema
+        .merge(z.object({ dummy: z.string() }))
+        .omit({ name: true, age: true })
+        .merge(
+          z.object({
+            newAge: z.number(),
+            newName: z.string(),
+          })
+        ),
+    })
       .add({
         path: "dummy",
         defaultVal: "",
@@ -872,3 +1242,69 @@ describe("renameMany", () => {
     });
   });
 });
+
+function testSafeSchemaReturnType(): 1 {
+  const restaurantSchema = z.object({
+    name: z.string(),
+  });
+
+  const menuSchema = z.object({
+    menuName: z.string(),
+  });
+
+  const restaurantWithChildren = restaurantSchema.extend({
+    menus: z.array(menuSchema),
+  });
+
+  const evolver = createZodMigrations({
+    startingSchema: restaurantSchema,
+  }).addNested({
+    path: "menus",
+    schema: z.array(menuSchema),
+    defaultVal: [],
+    nestedMigrator: createZodMigrations({
+      startingSchema: menuSchema,
+      endingSchema: restaurantWithChildren,
+    }),
+  });
+
+  const safeSchema: typeof restaurantWithChildren = evolver.safeSchema();
+
+  type A = z.infer<typeof restaurantWithChildren>;
+  type B = z.infer<typeof safeSchema>;
+
+  const badEvolver = evolver.remove("name");
+
+  // should be type never if evolver is missing fields in schema
+  const badEvolverSchema = badEvolver.safeSchema();
+  // @ts-expect-error badEvolver schema should never be equal
+  const a: Equals<
+    z.infer<typeof badEvolverSchema>,
+    z.infer<typeof restaurantWithChildren>
+  > = 1;
+
+  // should explode if schema is missing fields in evolver
+  const otherBadEvolverSchema = badEvolver
+    .add({
+      path: "cheese",
+      defaultVal: "",
+      schema: z.string(),
+    })
+    // @ts-expect-error if schema fields missing
+    .safeSchema(restaurantWithChildren);
+
+  // should
+  type C = z.infer<typeof restaurantWithChildren>;
+  type D = z.infer<typeof safeSchema>;
+
+  const canInstantiateNested: D = {
+    name: "restaurant",
+    menus: [
+      {
+        menuName: "menu 1",
+      },
+    ],
+  };
+
+  return 1 as Equals<A, B>;
+}
