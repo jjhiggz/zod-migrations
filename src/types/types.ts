@@ -20,26 +20,33 @@ import { ZodSchema } from "zod";
 export type Mutator<Shape, ReturnShape> = {
   tag: string;
   up: (input: Shape) => ReturnShape;
-  isValid: (input: Shape) => boolean;
+  isValid: ({
+    input,
+    renames,
+    paths,
+  }: {
+    input: Shape;
+    renames: [string, string][];
+    paths: string[];
+  }) => boolean;
   rewritePaths: (input: PathData[]) => PathData[];
   beforeMutate: ({ paths }: { paths: PathData[] }) => any;
   nestedMigrator?: {
-    migrator: ZodMigrations<any>;
+    migrator: ZodMigrations<any, any, any>;
     path: string;
   };
 };
 
 export type PathData = {
   path: string;
-  nestedMigrator?: ZodMigrations<any>;
+  nestedMigrator?: ZodMigrations<any, any, any>;
   schema: ZodSchema<any>;
 };
 
 export type FillableObject = Merge<{}, {}>;
 
-export type GetJsonEvolverShape<T extends ZodMigrations<any>> = Simplify<
-  ReturnType<T["transform"]>
->;
+export type GetJsonEvolverShape<T extends ZodMigrations<any, any, any>> =
+  Simplify<ReturnType<T["transform"]>>;
 
 // Remeda JS Types
 declare const __brand: unique symbol;

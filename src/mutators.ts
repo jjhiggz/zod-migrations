@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { z, ZodObject, type AnyZodObject, type ZodSchema } from "zod";
 import type {
   FillableObject,
@@ -12,6 +13,18 @@ import { ZodMigrations } from "./zod-migration";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
+
+export const getValidRenames = (renames: [string, string][], path: string) => {
+  const chain = [path];
+  let prevPath = path;
+  for (const rename of renames) {
+    if (rename[0] === prevPath) {
+      chain.push(rename[1]);
+      prevPath = rename[1];
+    }
+  }
+  return unique(chain);
+};
 
 const add = <
   Shape extends FillableObject,
@@ -34,11 +47,52 @@ const add = <
     tag: "add",
     up,
     // @ts-ignore
-    isValid: (input: unknown) => isValid(input?.[path], schema),
+    isValid: ({ input, renames }) => {
+      return getValidRenames(renames, path).some((path) => {
+        // @ts-ignore
+        return isValid(input?.[path], schema);
+      });
+    },
     rewritePaths: (input) => [...input, { path, schema }],
     beforeMutate: ({ paths }) => {
       if (paths.some((pathData) => pathData.path === path))
         throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
+  } satisfies Mutator<Shape, ReturnType<typeof up>>;
+};
+
+const addNestedArray = <
+  Shape extends FillableObject,
+  Schema extends ZodSchema,
+  Path extends string
+>({
+  path,
+  schema,
+  defaultVal,
+  nestedMigrator,
+}: {
+  path: Path;
+  defaultVal: z.infer<Schema>;
+  schema: Schema;
+  nestedMigrator: ZodMigrations<any, any, any>;
+}) => {
+  const up = (input: Shape) => {
+    return addProp(input, path, defaultVal);
+  };
+
+  return {
+    tag: "addNested",
+    up,
+    // @ts-ignore
+    isValid: ({ input }) => isValid(input?.[path], schema),
+    rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
+    beforeMutate: ({ paths }) => {
+      if (paths.find((pathData) => pathData.path === path))
+        throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
+    nestedMigrator: {
+      migrator: nestedMigrator,
+      path,
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -56,17 +110,23 @@ const addNestedPath = <
   path: Path;
   defaultVal: z.infer<Schema>;
   schema: Schema;
-  nestedMigrator: ZodMigrations<any>;
+  nestedMigrator: ZodMigrations<any, any, any>;
 }) => {
   const up = (input: Shape) => {
-    return addProp(input, path, defaultVal);
+    return addProp(
+      input,
+      path,
+      (input as any)[path]
+        ? nestedMigrator.transform((input as any)[path])
+        : defaultVal
+    );
   };
 
   return {
     tag: "addNested",
     up,
     // @ts-ignore
-    isValid: (input: unknown) => isValid(input?.[path], schema),
+    isValid: ({ input }) => isValid(input?.[path], schema),
     rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
     beforeMutate: ({ paths }) => {
       if (paths.find((pathData) => pathData.path === path))
@@ -89,7 +149,7 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
   return {
     up,
     tag: "removeOne",
-    isValid: (input) => !(path in input),
+    isValid: ({ input }) => !(path in input),
     rewritePaths: (input) =>
       input.filter((pathInEvolver) => pathInEvolver.path !== path),
     beforeMutate: () => {
@@ -134,7 +194,9 @@ const rename = <
     up,
     tag: "rename",
     // @ts-ignore
-    isValid: (input) => destination in input && !(source in input),
+    isValid: ({ input }) => {
+      return destination in input;
+    },
     beforeMutate: ({ paths }) => {
       if (paths.some((pathData) => pathData.path === destination)) {
         // @ts-ignore
@@ -183,7 +245,7 @@ const addMany = <
   return {
     tag: "addMany",
     up,
-    isValid: (input) => {
+    isValid: ({ input }) => {
       const entries = Object.entries((schema as any).shape);
       entries.every((entry) => {
         const key = entry[0];
@@ -229,7 +291,7 @@ const renameMany = <
   return {
     tag: "renameMany",
     up,
-    isValid: (input) => {
+    isValid: ({ input }) => {
       return Object.entries(renames).every(([source, destination]) => {
         return (
           (destination as keyof typeof input) in input && !(source in input)
@@ -270,6 +332,7 @@ export const mutators = {
   add,
   addMany,
   addNestedPath,
+  addNestedArray,
   removeOne,
   removeMany,
   rename,
