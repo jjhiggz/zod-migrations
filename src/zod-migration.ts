@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodObject, ZodSchema } from "zod";
 import type {
-  FillableObject,
   Mutator,
   NonMergeObject,
   PathData,
@@ -10,9 +9,9 @@ import type {
 } from "./types/types";
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
-import type { Merge, Simplify } from "type-fest";
+import type { Merge } from "type-fest";
 import { omit } from "remeda";
-import { Equals } from "./types/Equals";
+export type ZShape<Shape extends object> = ZodObject<any, any, any, Shape>;
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
@@ -21,9 +20,9 @@ export const versionTag = "__zod_migration_version";
 // pathData:  { nestedMigrator?: ZodMigrations , schema: zodSchema, path: string,  } | string
 
 export class ZodMigrations<
-  StartingShape extends FillableObject,
-  CurrentShape extends FillableObject,
-  EndingShape extends FillableObject
+  StartingShape extends object,
+  CurrentShape extends object,
+  EndingShape extends object
 > {
   /**
    * The amount of evolutions the schema has had since the beginning
@@ -57,8 +56,8 @@ export class ZodMigrations<
    */
   private transformsAppliedCount: number = 0;
 
-  private startingSchema: ZodSchema<StartingShape>;
-  private endingSchema: ZodSchema<EndingShape>;
+  private startingSchema: ZShape<StartingShape>;
+  private endingSchema: ZShape<EndingShape>;
   private renames: [string, string][];
 
   /**
@@ -70,8 +69,8 @@ export class ZodMigrations<
     nestedPaths: [keyof CurrentShape, ZodMigrations<any, any, any>][];
     paths: PathData[];
     versions: Map<number, number>;
-    startingSchema: ZodObject<CurrentShape, any, any>;
-    endingSchema: ZodObject<EndingShape, any, any>;
+    startingSchema: ZodObject<any, any, any, StartingShape>;
+    endingSchema: ZodObject<any, any, any, EndingShape>;
     renames: [string, string][];
   }) {
     if (input) {
@@ -81,9 +80,7 @@ export class ZodMigrations<
       this.nestedPaths = input.nestedPaths;
       this.paths = paths;
       this.versions = input.versions;
-      // @ts-ignore
       this.startingSchema = input.startingSchema;
-      // @ts-ignore
       this.endingSchema = input.endingSchema;
       this.renames = input.renames;
     } else {
@@ -93,10 +90,8 @@ export class ZodMigrations<
       this.paths = [];
       this.versions = new Map();
       this.transformsAppliedCount = 0;
-      // @ts-ignore
-      this.startingSchema = z.object({}) as ZodSchema<any, any, any>;
-      // @ts-ignore
-      this.endingSchema = z.object({}) as ZodSchema<any, any>;
+      this.startingSchema = z.object({}) as ZShape<any>;
+      this.endingSchema = z.object({}) as ZShape<any>;
       this.renames = [];
     }
   }
@@ -104,7 +99,7 @@ export class ZodMigrations<
   /**
    * Returns the next instance in the chain... See [Fluent Interfaces](https://en.wikipedia.org/wiki/Fluent_interface)
    */
-  next = <NewShape extends FillableObject>() => {
+  next = <NewShape extends object>() => {
     return new ZodMigrations<StartingShape, NewShape, EndingShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
       mutators: this.mutators,
@@ -112,9 +107,7 @@ export class ZodMigrations<
       nestedPaths: this.nestedPaths,
       paths: this.paths,
       versions: this.versions,
-      // @ts-ignore
       endingSchema: this.endingSchema,
-      // @ts-ignore
       startingSchema: this.startingSchema,
       renames: this.renames,
     });
@@ -184,7 +177,6 @@ export class ZodMigrations<
   }) => {
     // @ts-ignore
     return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      /* @ts-ignore*/
       return mutators.addNestedPath({
         path,
         schema,
@@ -319,7 +311,7 @@ export class ZodMigrations<
   transform = (
     input: any,
     { strip }: { strip: boolean } = { strip: true }
-  ): CurrentShape => {
+  ): EndingShape => {
     const schemaEvolutionCount = input[schemaEvolutionCountTag] ?? null;
 
     if (strip) {
@@ -363,7 +355,11 @@ export class ZodMigrations<
             input[mutator.nestedMigrator.path] ?? {}
           );
       } else {
-        input = mutator.up(input);
+        input = mutator.up({
+          input,
+          renames: this.renames,
+          paths: this.paths.map((path) => path.path),
+        });
       }
     }
 
@@ -419,27 +415,27 @@ export class ZodMigrations<
       transformsAppliedCount: this.transformsAppliedCount,
       endingSchema: this.endingSchema,
       startingSchema: this.startingSchema,
+      renames: this.renames,
     };
+  }
+
+  __get_current_shape(): CurrentShape {
+    return "dummy" as any as CurrentShape;
   }
 
   /**
    * create a safe schema from a strict schema
    */
-  safeSchema = (): Equals<
-    Simplify<CurrentShape>,
-    Simplify<EndingShape>
-  > extends 1
-    ? ZodSchema<EndingShape>
-    : never => {
-    if (!this.endingSchema) {
+  safeSchema = (): ZodSchema<EndingShape> => {
+    if (!this.__get_private_data().endingSchema) {
       throw new Error(
         "Cannot create a safe schema unless you provide an ending schema"
       );
     }
+
     // @ts-ignore
     return z.preprocess(
       (input) => this.transform(input),
-      // @ts-ignore
       this.endingSchema.passthrough()
     );
   };
@@ -451,9 +447,7 @@ export class ZodMigrations<
       paths: [...this.paths],
       schemaEvolutionCount: this.schemaEvolutionCount,
       versions: this.versions,
-      // @ts-ignore
       startingSchema: this.startingSchema,
-      // @ts-ignore
       endingSchema: this.endingSchema,
       renames: this.renames,
     });
@@ -464,18 +458,15 @@ export const createZodMigrations = <
   EndingShape extends object,
   StartingShape extends object
 >(_input: {
-  endingSchema?: ZodSchema<EndingShape, any, any>;
-  startingSchema: ZodSchema<StartingShape>;
+  endingSchema: ZShape<EndingShape>;
+  startingSchema: ZShape<StartingShape>;
 }) => {
-  // @ts-ignore
   const pathData: PathData[] = Object.keys(
-    // @ts-ignore
     _input.startingSchema.shape ?? {}
   ).map((path) => ({
     path,
-    // @ts-ignore
     schema: _input.startingSchema.shape[path],
-    nestedMigrator: null,
+    nestedMigrator: undefined,
   }));
 
   return new ZodMigrations<StartingShape, StartingShape, EndingShape>({
@@ -484,9 +475,7 @@ export const createZodMigrations = <
     paths: pathData,
     schemaEvolutionCount: 0,
     versions: new Map(),
-    // @ts-ignore
     startingSchema: _input.startingSchema,
-    // @ts-ignore
     endingSchema: _input.endingSchema,
     renames: [],
   });
@@ -528,7 +517,11 @@ export const testAllVersions = ({
   let currentData = startData;
 
   for (const mutator of metaData.mutators) {
-    currentData = mutator.up(currentData);
+    currentData = mutator.up({
+      input: currentData,
+      paths: metaData.paths.map((path) => path.path),
+      renames: metaData.renames,
+    });
     checkSchema(currentData);
   }
 

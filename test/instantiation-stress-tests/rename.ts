@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { ZodMigrations } from "../../src/zod-migration";
 import type { Equals } from "../../src/types/Equals";
+import { ZodMigratorEndShape } from "../../src/types/types";
 
 export const dumbSchema = z.object({
   ["first-name"]: z.string(),
@@ -1194,7 +1195,7 @@ const dumbEvoSchema = new ZodMigrations()
     destination: "first-name",
   });
 
-const a: ReturnType<(typeof dumbEvoSchema)["transform"]> = {
+const a: ZodMigratorEndShape<typeof dumbEvoSchema> = {
   "first-name": "jon",
 };
 

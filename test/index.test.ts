@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect } from "vitest";
 import {
@@ -7,21 +8,22 @@ import {
   testAllVersions,
   schemaEvolutionCountTag,
   versionTag,
+  ZShape,
 } from "../src/zod-migration";
-import { string, z, ZodSchema } from "zod";
+import { z } from "zod";
 import type { Equals } from "../src/types/Equals";
 import { getValidRenames, mutators } from "../src/mutators";
-import { GetJsonEvolverShape } from "../src/types/types";
+import { IsZodMigratorValid, ZodMigratorEndShape } from "../src/types/types";
 
 const basePersonSchema = z.object({
   name: z.string(),
   age: z.number(),
 });
 
-const createEvolver = <EndingSchema extends ZodSchema<any, any>>({
+const createEvolver = <Shape extends object>({
   endingSchema,
 }: {
-  endingSchema: EndingSchema;
+  endingSchema: ZShape<Shape>;
 }) =>
   createZodMigrations({
     startingSchema: z.object({}),
@@ -807,7 +809,7 @@ describe("remove", () => {
     expect(evolver.transform({ name: "Jon" })).toEqual({ name: "Jon" });
 
     // Type Test
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+
     (): { name: string } => evolver.transform({});
   });
 });
@@ -898,6 +900,7 @@ describe("transform", () => {
         name: z.string(),
         age: z.number(),
       }),
+      endingSchema: basePersonSchema,
     });
 
     const stringified = JSON.parse(evolver.stringify({ name: "jon", age: 30 }));
@@ -1099,7 +1102,7 @@ describe("addMany", () => {
 
     function correctEvolverShape(): 1 {
       return 1 as Equals<
-        GetJsonEvolverShape<typeof evolver>,
+        ZodMigratorEndShape<typeof evolver>,
         { name: string; age: number; cheese: string; poop: string }
       >;
     }
@@ -1166,7 +1169,7 @@ describe("renameMany", () => {
 
     function correctEvolverShape(): 1 {
       return 1 as Equals<
-        GetJsonEvolverShape<typeof evolver>,
+        ZodMigratorEndShape<typeof evolver>,
         { newName: string; newAge: number; dummy: string }
       >;
     }
@@ -1258,6 +1261,7 @@ function testSafeSchemaReturnType(): 1 {
 
   const evolver = createZodMigrations({
     startingSchema: restaurantSchema,
+    endingSchema: restaurantWithChildren,
   }).addNested({
     path: "menus",
     schema: z.array(menuSchema),
@@ -1268,21 +1272,21 @@ function testSafeSchemaReturnType(): 1 {
     }),
   });
 
-  const safeSchema: typeof restaurantWithChildren = evolver.safeSchema();
+  const safeSchema = evolver.safeSchema();
+
+  function isEvolverValid(): true {
+    return true as IsZodMigratorValid<typeof evolver>;
+  }
 
   type A = z.infer<typeof restaurantWithChildren>;
   type B = z.infer<typeof safeSchema>;
 
   const badEvolver = evolver.remove("name");
 
-  // should be type never if evolver is missing fields in schema
-  const badEvolverSchema = badEvolver.safeSchema();
-  // @ts-expect-error badEvolver schema should never be equal
-  const a: Equals<
-    z.infer<typeof badEvolverSchema>,
-    z.infer<typeof restaurantWithChildren>
-  > = 1;
-
+  function isBadEvolverValid(): true {
+    // @ts-expect-error bad evolver shouldn't be valid
+    return true as IsZodMigratorValid<typeof badEvolver>;
+  }
   // should explode if schema is missing fields in evolver
   const otherBadEvolverSchema = badEvolver
     .add({
@@ -1290,9 +1294,12 @@ function testSafeSchemaReturnType(): 1 {
       defaultVal: "",
       schema: z.string(),
     })
-    // @ts-expect-error if schema fields missing
-    .safeSchema(restaurantWithChildren);
+    .safeSchema();
 
+  function isOtherBadEvolverValid(): true {
+    // @ts-expect-error bad evolver shouldn't be valid
+    return true as IsZodMigratorValid<typeof otherBadEvolverSchema>;
+  }
   // should
   type C = z.infer<typeof restaurantWithChildren>;
   type D = z.infer<typeof safeSchema>;

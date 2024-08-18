@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Merge } from "ts-toolbelt/out/Object/Merge";
 import type { ZodMigrations } from "../zod-migration";
 import type {
   EmptyObject,
@@ -16,10 +14,15 @@ import type {
   IfNever,
 } from "type-fest";
 import { ZodSchema } from "zod";
+import { Equals } from "./Equals";
 
 export type Mutator<Shape, ReturnShape> = {
   tag: string;
-  up: (input: Shape) => ReturnShape;
+  up: (input: {
+    input: Shape;
+    renames: [string, string][];
+    paths: string[];
+  }) => ReturnShape;
   isValid: ({
     input,
     renames,
@@ -43,10 +46,18 @@ export type PathData = {
   schema: ZodSchema<any>;
 };
 
-export type FillableObject = Merge<{}, {}>;
-
-export type GetJsonEvolverShape<T extends ZodMigrations<any, any, any>> =
+export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["transform"]>>;
+
+export type ZodMigratorCurrentShape<T extends ZodMigrations<any, any, any>> =
+  Simplify<ReturnType<T["__get_current_shape"]>>;
+
+export type IsZodMigratorValid<T extends ZodMigrations<any, any, any>> = Equals<
+  ZodMigratorCurrentShape<T>,
+  ZodMigratorEndShape<T>
+> extends 1
+  ? true
+  : false;
 
 // Remeda JS Types
 declare const __brand: unique symbol;

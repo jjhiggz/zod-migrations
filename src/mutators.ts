@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { z, ZodObject, type AnyZodObject, type ZodSchema } from "zod";
-import type {
-  FillableObject,
-  Mutator,
-  NonMergeObject,
-  RenameManyReturn,
-} from "./types/types";
+import { z, ZodObject, ZodSchema, type AnyZodObject } from "zod";
+import type { Mutator, NonMergeObject, RenameManyReturn } from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
 import { ZodMigrations } from "./zod-migration";
 
@@ -27,7 +22,7 @@ export const getValidRenames = (renames: [string, string][], path: string) => {
 };
 
 const add = <
-  Shape extends FillableObject,
+  Shape extends object,
   Schema extends ZodSchema,
   Path extends string
 >({
@@ -39,7 +34,7 @@ const add = <
   defaultVal: z.infer<Schema>;
   schema: Schema;
 }) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return addProp(input, path, defaultVal);
   };
 
@@ -62,7 +57,7 @@ const add = <
 };
 
 const addNestedArray = <
-  Shape extends FillableObject,
+  Shape extends object,
   Schema extends ZodSchema,
   Path extends string
 >({
@@ -76,15 +71,24 @@ const addNestedArray = <
   schema: Schema;
   nestedMigrator: ZodMigrations<any, any, any>;
 }) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return addProp(input, path, defaultVal);
   };
 
   return {
-    tag: "addNested",
+    tag: "addNestedArray",
     up,
     // @ts-ignore
-    isValid: ({ input }) => isValid(input?.[path], schema),
+    isValid: ({ input }) => {
+      const atPath = (input as any)[path];
+      if (Array.isArray(atPath)) {
+        if (atPath.length === 0) return true;
+        // @ts-ignore
+        return atPath.every((val) => isValid(val, schema));
+      } else {
+        return false;
+      }
+    },
     rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
     beforeMutate: ({ paths }) => {
       if (paths.find((pathData) => pathData.path === path))
@@ -98,7 +102,7 @@ const addNestedArray = <
 };
 
 const addNestedPath = <
-  Shape extends FillableObject,
+  Shape extends object,
   Schema extends ZodSchema,
   Path extends string
 >({
@@ -112,7 +116,7 @@ const addNestedPath = <
   schema: Schema;
   nestedMigrator: ZodMigrations<any, any, any>;
 }) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return addProp(
       input,
       path,
@@ -142,7 +146,7 @@ const addNestedPath = <
 const removeOne = <Shape extends object, Path extends keyof Shape>(
   path: Path
 ) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return omit(input, [path]);
   };
 
@@ -161,7 +165,7 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
 const removeMany = <Shape extends object, K extends keyof Shape>(
   paths: ReadonlyArray<K>
 ) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return omit(input, paths);
   };
 
@@ -185,7 +189,7 @@ const rename = <
   source: SourceKey,
   destination: Destination
 ) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     const value = input[source];
     return pipe(input, omit([source]), addProp(destination, value));
   };
@@ -229,7 +233,7 @@ const rename = <
 };
 
 const addMany = <
-  Shape extends FillableObject,
+  Shape extends object,
   Schema extends ZodObject<NonMergeObject<Shape>, any, any>
 >({
   defaultValues,
@@ -238,7 +242,7 @@ const addMany = <
   defaultValues: z.infer<Schema>;
   schema: Schema;
 }) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     return merge(input, defaultValues);
   };
 
@@ -272,14 +276,14 @@ const addMany = <
 };
 
 const renameMany = <
-  Shape extends FillableObject,
+  Shape extends object,
   Renames extends Partial<Readonly<Record<keyof Shape, string>>>
 >({
   renames,
 }: {
   renames: Renames;
 }) => {
-  const up = (input: Shape) => {
+  const up = ({ input }: { input: Shape }) => {
     const result = mapKeys(input, (key) => {
       // @ts-ignore
       return key in renames ? renames[key as any] : key;
