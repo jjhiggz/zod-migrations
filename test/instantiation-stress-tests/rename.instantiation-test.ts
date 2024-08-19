@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { z } from "zod";
-import { createZodMigrations, ZodMigrations } from "../../src/zod-migration";
+import { createZodMigrations } from "../../src/zod-migration";
 import type { Equals } from "../../src/types/Equals";
 import {
   ZodMigratorCurrentShape,

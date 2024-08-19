@@ -259,9 +259,18 @@ export class ZodMigrations<
    * Removes a key from your schema
    */
   remove = <SourceKey extends keyof CurrentShape>(source: SourceKey) => {
-    this.paths = this.paths.filter((pathData) => pathData.path !== source);
-
     return this.mutate(() => mutators.removeOne(source));
+  };
+
+  /**
+   * Removes a key from your schema
+   */
+  removeMany = <SourceKey extends keyof CurrentShape>(
+    paths: Readonly<SourceKey[]>
+  ) => {
+    return this.mutate(() =>
+      mutators.removeMany<CurrentShape, (typeof paths)[number]>(paths)
+    );
   };
 
   mutate = <T extends FillableObject>(

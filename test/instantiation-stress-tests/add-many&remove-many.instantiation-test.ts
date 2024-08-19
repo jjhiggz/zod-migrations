@@ -14,8 +14,7 @@ createZodMigrations({
       age: z.number(),
     }),
   })
-  .remove("age")
-  .remove("name")
+  .removeMany(["age", "name"])
   .addMany({
     defaultValues: { name: "", age: 0 },
     schema: z.object({
@@ -23,8 +22,7 @@ createZodMigrations({
       age: z.number(),
     }),
   })
-  .remove("age")
-  .remove("name")
+  .removeMany(["age", "name"])
   .addMany({
     defaultValues: { name: "", age: 0 },
     schema: z.object({
@@ -32,8 +30,7 @@ createZodMigrations({
       age: z.number(),
     }),
   })
-  .remove("age")
-  .remove("name")
+  .removeMany(["age", "name"])
   .addMany({
     defaultValues: { name: "", age: 0 },
     schema: z.object({
@@ -41,7 +38,22 @@ createZodMigrations({
       age: z.number(),
     }),
   })
-  .remove("age")
-  .remove("name");
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"]);
 
 //   That's the limit.... fuck
