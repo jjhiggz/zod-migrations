@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createZodMigrations, ZShape } from "../src/zod-migration";
+import { createZodMigrations } from "../src/zod-migration";
+import { ZShape } from "../src/types/types";
 
 export const testBasePersonSchema = z.object({
   name: z.string(),

@@ -7,9 +7,10 @@ import type {
   RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
+  ZShape,
 } from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
-import { ZodMigrations, ZShape } from "./zod-migration";
+import { ZodMigrations } from "./zod-migration";
 import { ObjectWith } from "./types/ObjectWith";
 import { NonMergeObject, RenameManyReturn } from "./types/external-types";
 

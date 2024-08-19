@@ -25,7 +25,7 @@
   "scripts": {
     "test": "vitest",
     "build": "tsup",
-    "typecheck": "tsc --noEmit"
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

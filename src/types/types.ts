@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ZodMigrations } from "../zod-migration";
-import { ZodSchema } from "zod";
+import { ZodObject, ZodSchema } from "zod";
 import { Equals } from "./Equals";
 import { Simplify } from "type-fest";
 
@@ -34,6 +34,8 @@ export type PathData = {
   nestedMigrator?: ZodMigrations<any, any, any>;
   schema: ZodSchema<any>;
 };
+
+export type ZShape<Shape extends object> = ZodObject<any, any, any, Shape>;
 
 export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["transform"]>>;

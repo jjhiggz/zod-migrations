@@ -7,13 +7,13 @@ import type {
   RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
+  ZShape,
 } from "./types/types";
 import { getValidRenames, mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Merge } from "type-fest";
 import { omit } from "remeda";
 import { NonMergeObject, RenameManyReturn } from "./types/external-types";
-export type ZShape<Shape extends object> = ZodObject<any, any, any, Shape>;
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
