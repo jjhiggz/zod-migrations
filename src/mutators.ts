@@ -273,18 +273,31 @@ const addMany = <
   return {
     tag: "addMany",
     up,
-    isValid: ({ input }) => {
+    isValid: ({ input, renames }) => {
       const entries = Object.entries((schema as any).shape);
-      entries.every((entry) => {
-        const key = entry[0];
-        const schema = entry[1];
-        // @ts-ignore
-        return schema?.safeParse(input?.[key]).success;
+
+      return entries.every((entry) => {
+        const schemaAtEntry = schema.shape[entry[0]];
+        return getValidRenames(renames, entry[0]).some((rename) => {
+          const key = rename;
+          // @ts-ignore
+          return schemaAtEntry?.safeParse(input?.[key]).success;
+        });
       });
-      return false;
     },
-    beforeMutate: () => {
-      // Do nothing, should be accounted for
+    beforeMutate: ({ paths }) => {
+      const keys = Object.keys(schema.shape);
+      const keysWithConflict = keys.filter((key) => {
+        return paths.some((path) => path.path === key);
+      });
+
+      if (keysWithConflict.length) {
+        throw new Error(
+          `These keys conflict with existing keys in your path: ${keysWithConflict.join(
+            ","
+          )}`
+        );
+      }
     },
 
     // @ts-ignore
