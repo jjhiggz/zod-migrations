@@ -2,9 +2,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { z, ZodObject, ZodSchema, type AnyZodObject } from "zod";
-import type { Mutator, NonMergeObject, RenameManyReturn } from "./types/types";
+import type {
+  Mutator,
+  NonMergeObject,
+  RenameManyReturn,
+  ZodMigratorEndShape,
+  ZodMigratorStartShape,
+} from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
-import { ZodMigrations } from "./zod-migration";
+import { ZodMigrations, ZShape } from "./zod-migration";
+import { ObjectWith } from "./types/ObjectWith";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
@@ -59,35 +66,42 @@ const add = <
 const addNestedArray = <
   Shape extends object,
   Schema extends ZodSchema,
-  Path extends string
+  Path extends string,
+  Migrator extends ZodMigrations<any, any, any>
 >({
   path,
-  schema,
-  defaultVal,
+  currentSchema: schema,
   nestedMigrator,
 }: {
   path: Path;
-  defaultVal: z.infer<Schema>;
-  schema: Schema;
-  nestedMigrator: ZodMigrations<any, any, any>;
+  currentSchema: Schema;
+  nestedMigrator: Migrator;
 }) => {
   const up = ({ input }: { input: Shape }) => {
-    return addProp(input, path, defaultVal);
+    if (!Array.isArray((input as any)[path])) {
+      return addProp(input, path, [] as ZodMigratorEndShape<Migrator>[]);
+    } else {
+      return merge(input, {
+        [path]: (input as any)[path].map(nestedMigrator.transform),
+      } as Shape & ObjectWith<Path, ZodMigratorEndShape<Migrator>[]>);
+    }
   };
 
   return {
     tag: "addNestedArray",
     up,
     // @ts-ignore
-    isValid: ({ input }) => {
-      const atPath = (input as any)[path];
-      if (Array.isArray(atPath)) {
-        if (atPath.length === 0) return true;
-        // @ts-ignore
-        return atPath.every((val) => isValid(val, schema));
-      } else {
-        return false;
-      }
+    isValid: ({ input, renames }) => {
+      return getValidRenames(renames, path).some((rename) => {
+        const atPath = (input as any)[rename];
+        if (Array.isArray(atPath)) {
+          if (atPath.length === 0) return true;
+          // @ts-ignore
+          return atPath.every((val) => isValid(val, schema));
+        } else {
+          return false;
+        }
+      });
     },
     rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
     beforeMutate: ({ paths }) => {
@@ -103,26 +117,25 @@ const addNestedArray = <
 
 const addNestedPath = <
   Shape extends object,
-  Schema extends ZodSchema,
+  Migrator extends ZodMigrations<any, any, any>,
+  Schema extends ZShape<ZodMigratorEndShape<Migrator>>,
   Path extends string
 >({
   path,
-  schema,
-  defaultVal,
+  currentSchema,
+  defaultStartingVal,
   nestedMigrator,
 }: {
   path: Path;
-  defaultVal: z.infer<Schema>;
-  schema: Schema;
+  defaultStartingVal: ZodMigratorStartShape<Migrator>;
+  currentSchema: Schema;
   nestedMigrator: ZodMigrations<any, any, any>;
 }) => {
   const up = ({ input }: { input: Shape }) => {
     return addProp(
       input,
       path,
-      (input as any)[path]
-        ? nestedMigrator.transform((input as any)[path])
-        : defaultVal
+      nestedMigrator.transform((input as any)?.[path] ?? defaultStartingVal)
     );
   };
 
@@ -130,8 +143,11 @@ const addNestedPath = <
     tag: "addNested",
     up,
     // @ts-ignore
-    isValid: ({ input }) => isValid(input?.[path], schema),
-    rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
+    isValid: ({ input }) => isValid(input?.[path], currentSchema),
+    rewritePaths: (input) => [
+      ...input,
+      { path, schema: currentSchema, nestedMigrator },
+    ],
     beforeMutate: ({ paths }) => {
       if (paths.find((pathData) => pathData.path === path))
         throw new Error(`'${path}' already exists in your JsonEvolver`);

@@ -6,6 +6,8 @@ import type {
   NonMergeObject,
   PathData,
   RenameManyReturn,
+  ZodMigratorEndShape,
+  ZodMigratorStartShape,
 } from "./types/types";
 import { mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
@@ -131,56 +133,56 @@ export class ZodMigrations<
     );
   };
 
-  // incrementNestLevels = (
-  //   migrator: ZodMigrations<any, any, any>,
-  //   parentNestLevel: number
-  // ): ZodMigrations<any, any, any> => {
-  //   const cloned = migrator.__clone();
-
-  //   cloned.nestLevel = parentNestLevel + 1;
-
-  //   migrator.mutators = migrator.mutators.map((mutator) => {
-  //     if (mutator.nestedMigrator) {
-  //       let clonedMigrator = mutator.nestedMigrator.migrator;
-  //       clonedMigrator = this.incrementNestLevels(
-  //         clonedMigrator,
-  //         parentNestLevel + 1
-  //       );
-  //       return {
-  //         ...mutator,
-  //         nestedMigrator: {
-  //           path: mutator.nestedMigrator.path,
-  //           migrator: clonedMigrator,
-  //         },
-  //       };
-  //     } else {
-  //       return mutator;
-  //     }
-  //   });
-
-  //   return cloned;
-  // };
-
   /**
    * Add Nested Path
    */
-  addNested = <S extends ZodSchema, Path extends string>({
+  addNested = <
+    S extends ZShape<ZodMigratorEndShape<Migrator>>,
+    Path extends string,
+    Migrator extends ZodMigrations<any, any, any>
+  >({
     path,
-    schema,
-    defaultVal,
+    currentSchema,
+    defaultStartingVal,
     nestedMigrator,
   }: {
     path: Path;
-    defaultVal: z.infer<S>;
-    schema: S;
-    nestedMigrator: ZodMigrations<any, any, any>;
+    defaultStartingVal: ZodMigratorStartShape<Migrator>;
+    currentSchema: S;
+    nestedMigrator: Migrator;
   }) => {
     // @ts-ignore
     return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
       return mutators.addNestedPath({
         path,
-        schema,
-        defaultVal,
+        currentSchema,
+        defaultStartingVal: defaultStartingVal,
+        nestedMigrator,
+      });
+    });
+  };
+
+  /**
+   * Add Nested Path
+   */
+  addNestedArray = <
+    Schema extends ZodSchema,
+    Path extends string,
+    Migrator extends ZodMigrations<any, any, any>
+  >({
+    path,
+    schema,
+    nestedMigrator,
+  }: {
+    path: Path;
+    schema: Schema;
+    nestedMigrator: Migrator;
+  }) => {
+    // @ts-ignore
+    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
+      return mutators.addNestedArray({
+        path,
+        currentSchema: schema,
         nestedMigrator,
       });
     });
@@ -349,18 +351,11 @@ export class ZodMigrations<
 
     for (const mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
-      if (mutator.nestedMigrator) {
-        input[mutator.nestedMigrator.path] =
-          mutator.nestedMigrator.migrator.transform(
-            input[mutator.nestedMigrator.path] ?? {}
-          );
-      } else {
-        input = mutator.up({
-          input,
-          renames: this.renames,
-          paths: this.paths.map((path) => path.path),
-        });
-      }
+      input = mutator.up({
+        input,
+        renames: this.renames,
+        paths: this.paths.map((path) => path.path),
+      });
     }
 
     return input;
@@ -421,6 +416,10 @@ export class ZodMigrations<
 
   __get_current_shape(): CurrentShape {
     return "dummy" as any as CurrentShape;
+  }
+
+  __get_start_shape(): StartingShape {
+    return "dummy" as any as StartingShape;
   }
 
   /**

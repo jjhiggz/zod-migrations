@@ -17,12 +17,12 @@ import { ZodSchema } from "zod";
 import { Equals } from "./Equals";
 
 export type Mutator<Shape, ReturnShape> = {
-  tag: string;
+  tag: string; // "add" | "remove"
   up: (input: {
     input: Shape;
     renames: [string, string][];
     paths: string[];
-  }) => ReturnShape;
+  }) => ReturnShape; // "the function that transforms the original shape"
   isValid: ({
     input,
     renames,
@@ -51,6 +51,9 @@ export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
 
 export type ZodMigratorCurrentShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["__get_current_shape"]>>;
+
+export type ZodMigratorStartShape<T extends ZodMigrations<any, any, any>> =
+  Simplify<ReturnType<T["__get_start_shape"]>>;
 
 export type IsZodMigratorValid<T extends ZodMigrations<any, any, any>> = Equals<
   ZodMigratorCurrentShape<T>,
