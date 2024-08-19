@@ -41,9 +41,33 @@ const migrator = createZodMigrations({
   .rename({
     source: "name",
     destination: "first-name",
-  });
+  })
 
-// TODO: Fix this type instantiation problem
+  // // TODO: Fix this type instantiation problem
+  .rename({
+    source: "first-name",
+    destination: "name",
+  })
+  .rename({
+    source: "name",
+    destination: "first-name",
+  })
+  .rename({
+    source: "first-name",
+    destination: "name",
+  })
+  .rename({
+    source: "name",
+    destination: "first-name",
+  })
+  .rename({
+    source: "first-name",
+    destination: "name",
+  })
+  .rename({
+    source: "name",
+    destination: "first-name",
+  });
 // .rename({
 //   source: "first-name",
 //   destination: "name",
@@ -51,31 +75,7 @@ const migrator = createZodMigrations({
 // .rename({
 //   source: "name",
 //   destination: "first-name",
-// })
-// .rename({
-//   source: "first-name",
-//   destination: "name",
-// })
-// .rename({
-//   source: "name",
-//   destination: "first-name",
-// })
-// .rename({
-//   source: "first-name",
-//   destination: "name",
-// })
-// .rename({
-//   source: "name",
-//   destination: "first-name",
-// })
-// .rename({
-//   source: "first-name",
-//   destination: "name",
-// })
-// .rename({
-//   source: "name",
-//   destination: "first-name",
-// })
+// });
 // .rename({
 //   source: "first-name",
 //   destination: "name",

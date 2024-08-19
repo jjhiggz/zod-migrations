@@ -4,6 +4,7 @@ import { z, ZodObject, ZodSchema } from "zod";
 import type {
   Mutator,
   PathData,
+  RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
 } from "./types/types";
@@ -229,10 +230,7 @@ export class ZodMigrations<
   }) => {
     this.renames.push([source as string, destination]);
     return this.mutate<
-      Omit<
-        CurrentShape & ObjectWith<DestinationKey, CurrentShape[SourceKey]>,
-        SourceKey
-      >
+      RenameOutput<CurrentShape, SourceKey, DestinationKey>
       // @ts-ignore
     >(() => mutators.rename(source, destination));
   };

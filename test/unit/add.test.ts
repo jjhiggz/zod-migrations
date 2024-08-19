@@ -72,6 +72,28 @@ describe("mutator.up", () => {
       someValue: "",
     });
   });
+
+  it("should work just like add with add mutator", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema.merge(
+        z.object({
+          cheese: z.string(),
+        })
+      ),
+    }).mutate(() =>
+      mutators.add({
+        defaultVal: "swiss",
+        path: "cheese",
+        schema: z.string(),
+      })
+    );
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      cheese: "swiss",
+    });
+  });
 });
 
 describe("transform", () => {

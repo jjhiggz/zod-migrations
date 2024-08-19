@@ -50,12 +50,23 @@ export type IsZodMigratorValid<T extends ZodMigrations<any, any, any>> = Equals<
   ? true
   : false;
 
-type UpsertPropRaw<Type, Key extends string, Value> = Omit<Type, Key> & {
-  -readonly [P in Key]-?: Value;
-}; // The key is either a broad type (`string`) or union of literals
+// type UpsertPropRaw<Type, Key extends string, Value> = Omit<Type, Key> & {
+//   -readonly [P in Key]-?: Value;
+// }; // The key is either a broad type (`string`) or union of literals
+
+// export type RenameOutput<
+//   T,
+//   Source extends keyof T,
+//   Destination extends string
+// > = Omit<UpsertPropRaw<T, Destination, T[Source]>, Source>;
+
+type UpsertProp<Type, Key extends string, Value> = {
+  // @ts-expect-error This helps optimize perf
+  [P in keyof Type | Key]: P extends Key ? Value : Type[P];
+};
 
 export type RenameOutput<
   T,
   Source extends keyof T,
   Destination extends string
-> = Omit<UpsertPropRaw<T, Destination, T[Source]>, Source>;
+> = Omit<UpsertProp<T, Destination, T[Source]>, Source>;

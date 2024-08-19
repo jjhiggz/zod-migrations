@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
 import { createZodMigrations } from "../../src/zod-migration";
+import { mutators } from "../../src";
 
 describe("rename", () => {
   it("should not explode when a valid previous version is put in", async () => {
@@ -100,5 +101,29 @@ describe("full transform tests", () => {
 
     expect(evolver.transform({}).firstName).toEqual("");
     expect(evolver.transform({ name: "jon" }).firstName).toEqual("jon");
+  });
+});
+
+describe("mutator.up", () => {
+  it("should work with rename", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema.merge(
+        z.object({
+          pizza: z.string(),
+        })
+      ),
+    })
+      .add({
+        defaultVal: "",
+        path: "cheese",
+        schema: z.string(),
+      })
+      .mutate(() => mutators.rename("cheese", "pizza"));
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      pizza: "",
+    });
   });
 });
