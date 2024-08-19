@@ -2,7 +2,10 @@
 import type { ZodMigrations } from "../zod-migration";
 import { ZodObject, ZodSchema } from "zod";
 import { Equals } from "./Equals";
-import { Simplify } from "type-fest";
+import { Merge, Simplify } from "type-fest";
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type FillableObject = Merge<{}, {}>;
 
 export type Mutator<Shape, ReturnShape> = {
   tag: string; // "add" | "remove"
@@ -35,7 +38,12 @@ export type PathData = {
   schema: ZodSchema<any>;
 };
 
-export type ZShape<Shape extends object> = ZodObject<any, any, any, Shape>;
+export type ZShape<Shape extends FillableObject> = ZodObject<
+  any,
+  any,
+  any,
+  Shape
+>;
 
 export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["transform"]>>;

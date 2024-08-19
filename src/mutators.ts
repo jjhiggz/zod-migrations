@@ -3,6 +3,7 @@
 
 import { z, ZodObject, ZodSchema, type AnyZodObject } from "zod";
 import type {
+  FillableObject,
   Mutator,
   RenameOutput,
   ZodMigratorEndShape,
@@ -30,7 +31,7 @@ export const getValidRenames = (renames: [string, string][], path: string) => {
 };
 
 const add = <
-  Shape extends object,
+  Shape extends FillableObject,
   Schema extends ZodSchema,
   Path extends string
 >({
@@ -65,7 +66,7 @@ const add = <
 };
 
 const addNestedArray = <
-  Shape extends object,
+  Shape extends FillableObject,
   Schema extends ZodSchema,
   Path extends string,
   Migrator extends ZodMigrations<any, any, any>
@@ -118,7 +119,7 @@ const addNestedArray = <
 };
 
 const addNestedPath = <
-  Shape extends object,
+  Shape extends FillableObject,
   Migrator extends ZodMigrations<any, any, any>,
   Schema extends ZShape<ZodMigratorEndShape<Migrator>>,
   Path extends string
@@ -162,7 +163,7 @@ const addNestedPath = <
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
-const removeOne = <Shape extends object, Path extends keyof Shape>(
+const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
   path: Path
 ) => {
   const up = ({ input }: { input: Shape }) => {
@@ -181,7 +182,7 @@ const removeOne = <Shape extends object, Path extends keyof Shape>(
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
-const removeMany = <Shape extends object, K extends keyof Shape>(
+const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
   paths: ReadonlyArray<K>
 ) => {
   const up = ({ input }: { input: Shape }) => {
@@ -201,7 +202,7 @@ const removeMany = <Shape extends object, K extends keyof Shape>(
 };
 
 const rename = <
-  Shape extends object,
+  Shape extends FillableObject,
   SourceKey extends keyof Shape,
   Destination extends string
 >(
@@ -256,7 +257,7 @@ const rename = <
 };
 
 const addMany = <
-  Shape extends object,
+  Shape extends FillableObject,
   Schema extends ZodObject<NonMergeObject<Shape>, any, any>
 >({
   defaultValues,
@@ -299,7 +300,7 @@ const addMany = <
 };
 
 const renameMany = <
-  Shape extends object,
+  Shape extends FillableObject,
   Renames extends Partial<Readonly<Record<keyof Shape, string>>>
 >({
   renames,

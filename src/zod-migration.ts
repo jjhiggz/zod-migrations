@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodObject, ZodSchema } from "zod";
 import type {
+  FillableObject,
   Mutator,
   PathData,
   RenameOutput,
@@ -22,9 +23,9 @@ export const versionTag = "__zod_migration_version";
 // pathData:  { nestedMigrator?: ZodMigrations , schema: zodSchema, path: string,  } | string
 
 export class ZodMigrations<
-  StartingShape extends object,
-  CurrentShape extends object,
-  EndingShape extends object
+  StartingShape extends FillableObject,
+  CurrentShape extends FillableObject,
+  EndingShape extends FillableObject
 > {
   /**
    * The amount of evolutions the schema has had since the beginning
@@ -101,7 +102,7 @@ export class ZodMigrations<
   /**
    * Returns the next instance in the chain... See [Fluent Interfaces](https://en.wikipedia.org/wiki/Fluent_interface)
    */
-  next = <NewShape extends object>() => {
+  next = <NewShape extends FillableObject>() => {
     return new ZodMigrations<StartingShape, NewShape, EndingShape>({
       schemaEvolutionCount: this.schemaEvolutionCount + 1,
       mutators: this.mutators,
@@ -263,7 +264,7 @@ export class ZodMigrations<
     return this.mutate(() => mutators.removeOne(source));
   };
 
-  mutate = <T extends object>(
+  mutate = <T extends FillableObject>(
     createMutator: (_input: CurrentShape) => Mutator<CurrentShape, T>
   ) => {
     const mutator = createMutator(undefined as any as CurrentShape);
@@ -474,8 +475,8 @@ export class ZodMigrations<
 }
 
 export const createZodMigrations = <
-  EndingShape extends object,
-  StartingShape extends object
+  EndingShape extends FillableObject,
+  StartingShape extends FillableObject
 >(_input: {
   endingSchema: ZShape<EndingShape>;
   startingSchema: ZShape<StartingShape>;

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { createZodMigrations } from "../src/zod-migration";
-import { ZShape } from "../src/types/types";
+import { FillableObject, ZShape } from "../src/types/types";
 
 export const testBasePersonSchema = z.object({
   name: z.string(),
   age: z.number(),
 });
 
-export const createTestMigrator = <Shape extends object>({
+export const createTestMigrator = <Shape extends FillableObject>({
   endingSchema,
 }: {
   endingSchema: ZShape<Shape>;
