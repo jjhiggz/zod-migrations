@@ -4,15 +4,17 @@ import { z, ZodObject, ZodSchema } from "zod";
 import type {
   FillableObject,
   Mutator,
-  NonMergeObject,
   PathData,
-  RenameManyReturn,
+  RenameOutput,
+  ZodMigratorEndShape,
+  ZodMigratorStartShape,
+  ZShape,
 } from "./types/types";
-import { mutators } from "./mutators";
+import { getValidRenames, mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
-import type { Merge, Simplify } from "type-fest";
+import type { Merge } from "type-fest";
 import { omit } from "remeda";
-import { Equals } from "./types/Equals";
+import { NonMergeObject, RenameManyReturn } from "./types/external-types";
 
 export const schemaEvolutionCountTag = "__zod_migration_schema_evolution_count";
 export const versionTag = "__zod_migration_version";
@@ -57,8 +59,8 @@ export class ZodMigrations<
    */
   private transformsAppliedCount: number = 0;
 
-  private startingSchema: ZodSchema<StartingShape>;
-  private endingSchema: ZodSchema<EndingShape>;
+  private startingSchema: ZShape<StartingShape>;
+  private endingSchema: ZShape<EndingShape>;
   private renames: [string, string][];
 
   /**
@@ -70,8 +72,8 @@ export class ZodMigrations<
     nestedPaths: [keyof CurrentShape, ZodMigrations<any, any, any>][];
     paths: PathData[];
     versions: Map<number, number>;
-    startingSchema: ZodObject<CurrentShape, any, any>;
-    endingSchema: ZodObject<EndingShape, any, any>;
+    startingSchema: ZodObject<any, any, any, StartingShape>;
+    endingSchema: ZodObject<any, any, any, EndingShape>;
     renames: [string, string][];
   }) {
     if (input) {
@@ -81,9 +83,7 @@ export class ZodMigrations<
       this.nestedPaths = input.nestedPaths;
       this.paths = paths;
       this.versions = input.versions;
-      // @ts-ignore
       this.startingSchema = input.startingSchema;
-      // @ts-ignore
       this.endingSchema = input.endingSchema;
       this.renames = input.renames;
     } else {
@@ -93,10 +93,8 @@ export class ZodMigrations<
       this.paths = [];
       this.versions = new Map();
       this.transformsAppliedCount = 0;
-      // @ts-ignore
-      this.startingSchema = z.object({}) as ZodSchema<any, any, any>;
-      // @ts-ignore
-      this.endingSchema = z.object({}) as ZodSchema<any, any>;
+      this.startingSchema = z.object({}) as ZShape<any>;
+      this.endingSchema = z.object({}) as ZShape<any>;
       this.renames = [];
     }
   }
@@ -112,9 +110,7 @@ export class ZodMigrations<
       nestedPaths: this.nestedPaths,
       paths: this.paths,
       versions: this.versions,
-      // @ts-ignore
       endingSchema: this.endingSchema,
-      // @ts-ignore
       startingSchema: this.startingSchema,
       renames: this.renames,
     });
@@ -138,57 +134,56 @@ export class ZodMigrations<
     );
   };
 
-  // incrementNestLevels = (
-  //   migrator: ZodMigrations<any, any, any>,
-  //   parentNestLevel: number
-  // ): ZodMigrations<any, any, any> => {
-  //   const cloned = migrator.__clone();
-
-  //   cloned.nestLevel = parentNestLevel + 1;
-
-  //   migrator.mutators = migrator.mutators.map((mutator) => {
-  //     if (mutator.nestedMigrator) {
-  //       let clonedMigrator = mutator.nestedMigrator.migrator;
-  //       clonedMigrator = this.incrementNestLevels(
-  //         clonedMigrator,
-  //         parentNestLevel + 1
-  //       );
-  //       return {
-  //         ...mutator,
-  //         nestedMigrator: {
-  //           path: mutator.nestedMigrator.path,
-  //           migrator: clonedMigrator,
-  //         },
-  //       };
-  //     } else {
-  //       return mutator;
-  //     }
-  //   });
-
-  //   return cloned;
-  // };
+  /**
+   * Add Nested Path
+   */
+  addNested = <
+    S extends ZShape<ZodMigratorEndShape<Migrator>>,
+    Path extends string,
+    Migrator extends ZodMigrations<any, any, any>
+  >({
+    path,
+    currentSchema,
+    defaultStartingVal,
+    nestedMigrator,
+  }: {
+    path: Path;
+    defaultStartingVal: ZodMigratorStartShape<Migrator>;
+    currentSchema: S;
+    nestedMigrator: Migrator;
+  }) => {
+    // @ts-ignore
+    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
+      return mutators.addNestedPath({
+        path,
+        currentSchema,
+        defaultStartingVal: defaultStartingVal,
+        nestedMigrator,
+      });
+    });
+  };
 
   /**
    * Add Nested Path
    */
-  addNested = <S extends ZodSchema, Path extends string>({
+  addNestedArray = <
+    Schema extends ZodSchema,
+    Path extends string,
+    Migrator extends ZodMigrations<any, any, any>
+  >({
     path,
     schema,
-    defaultVal,
     nestedMigrator,
   }: {
     path: Path;
-    defaultVal: z.infer<S>;
-    schema: S;
-    nestedMigrator: ZodMigrations<any, any, any>;
+    schema: Schema;
+    nestedMigrator: Migrator;
   }) => {
     // @ts-ignore
     return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      /* @ts-ignore*/
-      return mutators.addNestedPath({
+      return mutators.addNestedArray({
         path,
-        schema,
-        defaultVal,
+        currentSchema: schema,
         nestedMigrator,
       });
     });
@@ -235,7 +230,10 @@ export class ZodMigrations<
     destination: DestinationKey;
   }) => {
     this.renames.push([source as string, destination]);
-    return this.mutate(() => mutators.rename(source, destination));
+    return this.mutate<
+      RenameOutput<CurrentShape, SourceKey, DestinationKey>
+      // @ts-ignore
+    >(() => mutators.rename(source, destination));
   };
 
   /**
@@ -266,7 +264,7 @@ export class ZodMigrations<
     return this.mutate(() => mutators.removeOne(source));
   };
 
-  mutate = <T extends object>(
+  mutate = <T extends FillableObject>(
     createMutator: (_input: CurrentShape) => Mutator<CurrentShape, T>
   ) => {
     const mutator = createMutator(undefined as any as CurrentShape);
@@ -319,7 +317,7 @@ export class ZodMigrations<
   transform = (
     input: any,
     { strip }: { strip: boolean } = { strip: true }
-  ): CurrentShape => {
+  ): EndingShape => {
     const schemaEvolutionCount = input[schemaEvolutionCountTag] ?? null;
 
     if (strip) {
@@ -357,14 +355,11 @@ export class ZodMigrations<
 
     for (const mutator of mutators) {
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
-      if (mutator.nestedMigrator) {
-        input[mutator.nestedMigrator.path] =
-          mutator.nestedMigrator.migrator.transform(
-            input[mutator.nestedMigrator.path] ?? {}
-          );
-      } else {
-        input = mutator.up(input);
-      }
+      input = mutator.up({
+        input,
+        renames: this.renames,
+        paths: this.paths.map((path) => path.path),
+      });
     }
 
     return input;
@@ -375,12 +370,29 @@ export class ZodMigrations<
 
     input[schemaEvolutionCountTag] = this.schemaEvolutionCount;
 
-    this.paths.forEach((pathData) => {
-      if (pathData.nestedMigrator) {
-        const valueAtPath = input[pathData.path];
+    const mutatorsWithNestedMigrators = this.mutators.filter(
+      (mutator) => mutator.nestedMigrator
+    );
 
-        input[pathData.path] =
-          pathData.nestedMigrator.preStringify(valueAtPath);
+    mutatorsWithNestedMigrators.forEach((mutator) => {
+      const renames = getValidRenames(
+        this.renames,
+        mutator.nestedMigrator!.path
+      );
+      for (const rename of renames) {
+        const valueAtPath = input[rename];
+        if (valueAtPath) {
+          console.log(mutator.tag);
+          if (mutator.tag === "addNestedArray") {
+            input[rename] = input?.[rename]?.map((value: any) => {
+              return mutator.nestedMigrator!.migrator.preStringify(value);
+            });
+          }
+          if (mutator.tag === "addNested") {
+            input[rename] =
+              mutator.nestedMigrator!.migrator.preStringify(valueAtPath);
+          }
+        }
       }
     });
 
@@ -419,27 +431,31 @@ export class ZodMigrations<
       transformsAppliedCount: this.transformsAppliedCount,
       endingSchema: this.endingSchema,
       startingSchema: this.startingSchema,
+      renames: this.renames,
     };
+  }
+
+  __get_current_shape(): CurrentShape {
+    return "dummy" as any as CurrentShape;
+  }
+
+  __get_start_shape(): StartingShape {
+    return "dummy" as any as StartingShape;
   }
 
   /**
    * create a safe schema from a strict schema
    */
-  safeSchema = (): Equals<
-    Simplify<CurrentShape>,
-    Simplify<EndingShape>
-  > extends 1
-    ? ZodSchema<EndingShape>
-    : never => {
-    if (!this.endingSchema) {
+  safeSchema = (): ZodSchema<EndingShape> => {
+    if (!this.__get_private_data().endingSchema) {
       throw new Error(
         "Cannot create a safe schema unless you provide an ending schema"
       );
     }
+
     // @ts-ignore
     return z.preprocess(
       (input) => this.transform(input),
-      // @ts-ignore
       this.endingSchema.passthrough()
     );
   };
@@ -451,9 +467,7 @@ export class ZodMigrations<
       paths: [...this.paths],
       schemaEvolutionCount: this.schemaEvolutionCount,
       versions: this.versions,
-      // @ts-ignore
       startingSchema: this.startingSchema,
-      // @ts-ignore
       endingSchema: this.endingSchema,
       renames: this.renames,
     });
@@ -461,21 +475,18 @@ export class ZodMigrations<
 }
 
 export const createZodMigrations = <
-  EndingShape extends object,
-  StartingShape extends object
+  EndingShape extends FillableObject,
+  StartingShape extends FillableObject
 >(_input: {
-  endingSchema?: ZodSchema<EndingShape, any, any>;
-  startingSchema: ZodSchema<StartingShape>;
+  endingSchema: ZShape<EndingShape>;
+  startingSchema: ZShape<StartingShape>;
 }) => {
-  // @ts-ignore
   const pathData: PathData[] = Object.keys(
-    // @ts-ignore
     _input.startingSchema.shape ?? {}
   ).map((path) => ({
     path,
-    // @ts-ignore
     schema: _input.startingSchema.shape[path],
-    nestedMigrator: null,
+    nestedMigrator: undefined,
   }));
 
   return new ZodMigrations<StartingShape, StartingShape, EndingShape>({
@@ -484,9 +495,7 @@ export const createZodMigrations = <
     paths: pathData,
     schemaEvolutionCount: 0,
     versions: new Map(),
-    // @ts-ignore
     startingSchema: _input.startingSchema,
-    // @ts-ignore
     endingSchema: _input.endingSchema,
     renames: [],
   });
@@ -528,7 +537,11 @@ export const testAllVersions = ({
   let currentData = startData;
 
   for (const mutator of metaData.mutators) {
-    currentData = mutator.up(currentData);
+    currentData = mutator.up({
+      input: currentData,
+      paths: metaData.paths.map((path) => path.path),
+      renames: metaData.renames,
+    });
     checkSchema(currentData);
   }
 

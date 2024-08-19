@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Equals } from "../../src/types/Equals";
-import { ZodMigrations } from "../../src/zod-migration";
+import { ZodMigratorEndShape } from "../../src/types/types";
+import { createJsonEvolver } from "../../src";
 
 export const dumbSchema = z.object({
   field1: z.string(),
@@ -115,7 +116,10 @@ export const dumbSchema = z.object({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dumbEvoSchema = new ZodMigrations()
+const dumbEvoSchema = createJsonEvolver({
+  startingSchema: z.object({}),
+  endingSchema: dumbSchema,
+})
   .add({
     path: "field1",
     defaultVal: "",
@@ -667,10 +671,10 @@ const dumbEvoSchema = new ZodMigrations()
     schema: z.string(),
   });
 
+type A = ZodMigratorEndShape<typeof dumbEvoSchema>;
+// type C = ZodMigratorCurrentShape<typeof dumbEvoSchema>;
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const checkEvoTypeMenu = (): 1 => {
-  return 1 as Equals<
-    ReturnType<(typeof dumbEvoSchema)["transform"]>,
-    z.infer<typeof dumbSchema>
-  >;
+  return 1 as Equals<A, z.infer<typeof dumbSchema>>;
 };
