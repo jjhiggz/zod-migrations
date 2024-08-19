@@ -8,7 +8,7 @@ import type {
   ZodMigratorEndShape,
   ZodMigratorStartShape,
 } from "./types/types";
-import { mutators } from "./mutators";
+import { getValidRenames, mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Merge } from "type-fest";
 import { omit } from "remeda";
@@ -369,12 +369,29 @@ export class ZodMigrations<
 
     input[schemaEvolutionCountTag] = this.schemaEvolutionCount;
 
-    this.paths.forEach((pathData) => {
-      if (pathData.nestedMigrator) {
-        const valueAtPath = input[pathData.path];
+    const mutatorsWithNestedMigrators = this.mutators.filter(
+      (mutator) => mutator.nestedMigrator
+    );
 
-        input[pathData.path] =
-          pathData.nestedMigrator.preStringify(valueAtPath);
+    mutatorsWithNestedMigrators.forEach((mutator) => {
+      const renames = getValidRenames(
+        this.renames,
+        mutator.nestedMigrator!.path
+      );
+      for (const rename of renames) {
+        const valueAtPath = input[rename];
+        if (valueAtPath) {
+          console.log(mutator.tag);
+          if (mutator.tag === "addNestedArray") {
+            input[rename] = input?.[rename]?.map((value: any) => {
+              return mutator.nestedMigrator!.migrator.preStringify(value);
+            });
+          }
+          if (mutator.tag === "addNested") {
+            input[rename] =
+              mutator.nestedMigrator!.migrator.preStringify(valueAtPath);
+          }
+        }
       }
     });
 

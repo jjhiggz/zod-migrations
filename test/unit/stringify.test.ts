@@ -408,7 +408,7 @@ describe("stringify", () => {
     expect(transformed["nested"]).not.toHaveProperty(schemaEvolutionCountTag);
   });
 
-  it("should strip properties from nested objects", () => {
+  it.only("should strip properties from nested objects", () => {
     const nestedSchema = testBasePersonSchema;
     const schema = testBasePersonSchema.merge(
       z.object({

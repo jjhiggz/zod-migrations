@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
-import { mutators } from "../../src";
+import { mutators, schemaEvolutionCountTag } from "../../src";
 import { z } from "zod";
+import { createZodMigrations } from "../../src/zod-migration";
 
 describe("mutator.isValid", () => {
   it("isValid should succeed if path is there", () => {
@@ -96,7 +97,55 @@ describe("mutator.up", () => {
       ],
     });
   });
+});
 
+describe("stringified", () => {
+  it("should tag stringified data correctly", () => {
+    const nestedSchema = testBasePersonSchema
+      .omit({
+        name: true,
+      })
+      .merge(
+        z.object({
+          firstName: z.string(),
+        })
+      );
+
+    const nestedMigrator = createTestMigrator({
+      endingSchema: nestedSchema,
+    }).rename({
+      source: "name",
+      destination: "firstName",
+    });
+
+    const migrator = createZodMigrations({
+      endingSchema: z.object({
+        nested: nestedSchema,
+      }),
+      startingSchema: z.object({}),
+    }).addNestedArray({
+      nestedMigrator,
+      path: "nested",
+      schema: nestedSchema,
+    });
+
+    const stringified = migrator.preStringify({
+      nested: [
+        {
+          firstName: "jon",
+          age: 0,
+        },
+      ],
+    });
+
+    expect(stringified).toEqual({
+      [schemaEvolutionCountTag]: 1,
+      nested: [{ age: 0, firstName: "jon", [schemaEvolutionCountTag]: 3 }],
+    });
+  });
+});
+
+describe("full transform tests", () => {
   it("should evolve nested schemas and retain information", () => {
     const nestedMigrator = createTestMigrator({
       endingSchema: testBasePersonSchema

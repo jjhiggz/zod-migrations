@@ -111,6 +111,7 @@ const addNestedArray = <
     nestedMigrator: {
       migrator: nestedMigrator,
       path,
+      type: "array",
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -155,6 +156,7 @@ const addNestedPath = <
     nestedMigrator: {
       migrator: nestedMigrator,
       path,
+      type: "object",
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };

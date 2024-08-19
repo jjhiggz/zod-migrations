@@ -24,7 +24,8 @@
   "license": "ISC",
   "scripts": {
     "test": "vitest",
-    "build": "tsup"
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

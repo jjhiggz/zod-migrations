@@ -25,6 +25,7 @@ export type Mutator<Shape, ReturnShape> = {
   nestedMigrator?: {
     migrator: ZodMigrations<any, any, any>;
     path: string;
+    type: "object" | "array";
   };
 };
 
@@ -49,16 +50,6 @@ export type IsZodMigratorValid<T extends ZodMigrations<any, any, any>> = Equals<
 > extends 1
   ? true
   : false;
-
-// type UpsertPropRaw<Type, Key extends string, Value> = Omit<Type, Key> & {
-//   -readonly [P in Key]-?: Value;
-// }; // The key is either a broad type (`string`) or union of literals
-
-// export type RenameOutput<
-//   T,
-//   Source extends keyof T,
-//   Destination extends string
-// > = Omit<UpsertPropRaw<T, Destination, T[Source]>, Source>;
 
 type UpsertProp<Type, Key extends string, Value> = {
   // @ts-expect-error This helps optimize perf
