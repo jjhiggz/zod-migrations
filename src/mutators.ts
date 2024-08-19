@@ -4,14 +4,14 @@
 import { z, ZodObject, ZodSchema, type AnyZodObject } from "zod";
 import type {
   Mutator,
-  NonMergeObject,
-  RenameManyReturn,
+  RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
 } from "./types/types";
 import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
 import { ZodMigrations, ZShape } from "./zod-migration";
 import { ObjectWith } from "./types/ObjectWith";
+import { NonMergeObject, RenameManyReturn } from "./types/external-types";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
@@ -207,7 +207,11 @@ const rename = <
 ) => {
   const up = ({ input }: { input: Shape }) => {
     const value = input[source];
-    return pipe(input, omit([source]), addProp(destination, value));
+    return pipe(
+      input,
+      omit([source]),
+      addProp(destination, value)
+    ) as any as RenameOutput<Shape, SourceKey, Destination>;
   };
 
   return {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { mutators } from "../../src";
 import { createZodMigrations } from "../../src/zod-migration";
-import { testBasePersonSchema } from "../utils";
+import { createTestMigrator, testBasePersonSchema } from "../utils";
 
 describe("mutator.isValid", () => {
   it("isValid should succeed if path is there", () => {
@@ -84,5 +84,36 @@ describe("transform", () => {
     expect(migrator.transform({})).toEqual({
       someValue: "",
     });
+  });
+
+  it("should poop out all of the defaults if empty object put in", () => {
+    const evolver = createTestMigrator({ endingSchema: testBasePersonSchema });
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+    });
+  });
+});
+
+describe("mutator.beforeMutate", () => {
+  it("should throw an error for name conflict", async () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema,
+    }).add({
+      defaultVal: "",
+      path: "random",
+      schema: z.string(),
+    });
+
+    const result = await Promise.resolve()
+      .then(() =>
+        evolver.add({ path: "random", defaultVal: "any", schema: z.string() })
+      )
+      .catch((e) => {
+        expect(e.message).toBe("'random' already exists in your JsonEvolver");
+        return null;
+      });
+    expect(result).toBe(null);
   });
 });

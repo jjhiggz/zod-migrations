@@ -672,6 +672,7 @@ const dumbEvoSchema = createJsonEvolver({
   });
 
 type A = ZodMigratorEndShape<typeof dumbEvoSchema>;
+// type C = ZodMigratorCurrentShape<typeof dumbEvoSchema>;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const checkEvoTypeMenu = (): 1 => {
