@@ -236,3 +236,18 @@ describe("full transform tests", () => {
     });
   });
 });
+
+describe("mutate.rewriteRenames", () => {
+  it("should not rewrite renames", () => {
+    const rewriteRenames = mutators.addMany({
+      defaultValues: {
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+      }),
+    }).rewriteRenames;
+
+    expect(rewriteRenames({ renames: [] })).toEqual([]);
+  });
+});

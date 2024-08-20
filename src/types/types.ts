@@ -24,6 +24,9 @@ export type Mutator<Shape, ReturnShape> = {
     paths: string[];
   }) => boolean;
   rewritePaths: (input: PathData[]) => PathData[];
+  rewriteRenames: (input: {
+    renames: [string, string][];
+  }) => [string, string][];
   beforeMutate: ({ paths }: { paths: PathData[] }) => any;
   nestedMigrator?: {
     migrator: ZodMigrations<any, any, any>;

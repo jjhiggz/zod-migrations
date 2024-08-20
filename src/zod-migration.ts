@@ -5,6 +5,7 @@ import type {
   FillableObject,
   Mutator,
   PathData,
+  RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
   ZShape,
@@ -225,16 +226,16 @@ export class ZodMigrations<
   rename = <
     SourceKey extends keyof CurrentShape,
     DestinationKey extends string
-  >(
-    cb: () => {
-      source: SourceKey;
-      destination: DestinationKey;
-    }
-  ) => {
-    const { destination, source } = cb();
-
-    // @ts-ignore
-    return this.mutate(() => mutators.rename(source, destination));
+  >({
+    source,
+    destination,
+  }: {
+    source: SourceKey;
+    destination: DestinationKey;
+  }) => {
+    return this.mutate<RenameOutput<CurrentShape, SourceKey, DestinationKey>>(
+      () => mutators.rename(source, destination)
+    );
   };
 
   consolidate = <T extends CurrentShape>() => {
@@ -251,10 +252,6 @@ export class ZodMigrations<
   >(
     renames: Renames
   ) => {
-    Object.entries(renames).forEach(([source, destination]) => {
-      this.renames.push([source, destination as string]);
-    });
-
     return this.mutate<RenameManyReturn<CurrentShape, Renames>>(() =>
       mutators.renameMany<CurrentShape, Renames>({ renames })
     );
@@ -288,6 +285,7 @@ export class ZodMigrations<
     });
 
     this.paths = mutator.rewritePaths(this.paths);
+    this.renames = mutator.rewriteRenames({ renames: this.renames });
 
     this.mutators.push(mutator);
 

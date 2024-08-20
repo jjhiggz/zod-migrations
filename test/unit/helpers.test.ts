@@ -3,6 +3,15 @@ import { getValidRenames } from "../../src/mutators";
 import { testAllVersions } from "../../src";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
+import { pipe, sort } from "remeda";
+
+const sortByAlphabetical = (input: string[]) => {
+  return sort(input, (str1, str2) => {
+    if (str1 > str2) return 1;
+    if (str2 > str1) return -1;
+    return 0;
+  });
+};
 
 describe("getValidRenames", () => {
   it("should find one valid rename", () => {
@@ -13,6 +22,34 @@ describe("getValidRenames", () => {
   });
 
   it("should work if I rename twice", () => {
+    expect(
+      getValidRenames(
+        [
+          ["name", "firstName"],
+          ["firstName", "newFirstName"],
+        ],
+        "name"
+      )
+    ).toEqual(["name", "firstName", "newFirstName"]);
+  });
+
+  it("should work if I rename twice backward", () => {
+    const result = pipe(
+      getValidRenames(
+        [
+          ["name", "firstName"],
+          ["firstName", "newFirstName"],
+        ],
+        "newFirstName"
+      ),
+      sortByAlphabetical
+    );
+    expect(result).toEqual(
+      sortByAlphabetical(["name", "firstName", "newFirstName"])
+    );
+  });
+
+  it("should work if I rename back and forth", () => {
     expect(
       getValidRenames(
         [

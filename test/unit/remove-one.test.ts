@@ -35,3 +35,25 @@ describe("mutate.up", () => {
     });
   });
 });
+
+describe("mutate.rewriteRenames", () => {
+  it("should remove renames if points to the field that is renamed", () => {
+    const rewriteRenames = mutators.removeOne<
+      { name: string; age: number },
+      "name"
+    >("name").rewriteRenames;
+
+    const result = rewriteRenames({
+      renames: [
+        ["a", "b"],
+        ["startName", "firstName"],
+        ["firstName", "name"],
+        ["c", "d"],
+      ],
+    });
+    expect(result).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
+  });
+});

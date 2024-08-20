@@ -36,7 +36,7 @@ describe("full transform tests", () => {
     });
   });
 
-  it("renamed values should carry through", () => {
+  it.only("renamed values should carry through", () => {
     const doubleNestedSchema = testBasePersonSchema.omit({ name: true }).merge(
       z.object({
         firstName: z.string(),

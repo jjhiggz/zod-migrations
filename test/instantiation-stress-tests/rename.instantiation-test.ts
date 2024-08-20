@@ -29,123 +29,123 @@ const migrator = createZodMigrations<
     defaultVal: "",
     schema: z.string(),
   })
-  .rename(() => ({
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
+  })
   .consolidate<{ "first-name": string }>()
-  .rename(() => ({
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "first-name",
     destination: "name",
-  }))
-  .rename(() => ({
+  })
+  .rename({
     source: "name",
     destination: "first-name",
-  }));
+  });
 
 type CurrentShape = ZodMigratorCurrentShape<typeof migrator>;
 

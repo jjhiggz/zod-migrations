@@ -139,3 +139,15 @@ describe("mutator.beforeMutate", () => {
     expect(result).toBe(null);
   });
 });
+
+describe("mutate.rewriteRenames", () => {
+  it("should not rewrite renames", () => {
+    const rewriteRenames = mutators.add({
+      path: "name",
+      schema: z.string(),
+      defaultVal: "",
+    }).rewriteRenames;
+
+    expect(rewriteRenames({ renames: [] })).toEqual([]);
+  });
+});

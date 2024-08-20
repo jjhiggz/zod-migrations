@@ -10,13 +10,17 @@ import type {
   ZodMigratorStartShape,
   ZShape,
 } from "./types/types";
-import { addProp, mapKeys, merge, omit, pipe, unique } from "remeda";
+import { addProp, mapKeys, merge, omit, pipe, reverse, unique } from "remeda";
 import { ZodMigrations } from "./zod-migration";
 import { ObjectWith } from "./types/ObjectWith";
 import { NonMergeObject, RenameManyReturn } from "./types/external-types";
 
 const isValid = (input: any, zodSchema: AnyZodObject) =>
   zodSchema.safeParse(input).success;
+
+const defaultRewriteRenames: Mutator<any, any>["rewriteRenames"] = ({
+  renames,
+}) => renames;
 
 export const getValidRenames = (renames: [string, string][], path: string) => {
   const chain = [path];
@@ -27,6 +31,16 @@ export const getValidRenames = (renames: [string, string][], path: string) => {
       prevPath = rename[1];
     }
   }
+
+  let currPath = path;
+
+  for (const rename of reverse(renames)) {
+    if (rename[1] === currPath) {
+      chain.push(rename[0]);
+      currPath = rename[0];
+    }
+  }
+
   return unique(chain);
 };
 
@@ -62,6 +76,7 @@ const add = <
       if (paths.some((pathData) => pathData.path === path))
         throw new Error(`'${path}' already exists in your JsonEvolver`);
     },
+    rewriteRenames: defaultRewriteRenames,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -115,6 +130,7 @@ const addNestedArray = <
       path,
       type: "array",
     },
+    rewriteRenames: defaultRewriteRenames,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -160,6 +176,7 @@ const addNestedPath = <
       path,
       type: "object",
     },
+    rewriteRenames: defaultRewriteRenames,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -176,8 +193,16 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
     isValid: ({ input }) => !(path in input),
     rewritePaths: (input) =>
       input.filter((pathInEvolver) => pathInEvolver.path !== path),
-    beforeMutate: () => {
-      // do nothing, inputs parsed in typesystem
+    beforeMutate: ({ paths }) => {
+      if (!paths.some((pathData) => pathData.path === path)) {
+        throw new Error(`Path ${path.toString()} not found`);
+      }
+    },
+    rewriteRenames: ({ renames }) => {
+      const relatedRenames = getValidRenames(renames, path as string);
+      return renames.filter(
+        ([renameKey]) => !relatedRenames.includes(renameKey)
+      );
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -196,8 +221,9 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
     beforeMutate: () => {
       // do nothing, inputs parsed in typesystem
     },
-    rewritePaths: (input) =>
-      input.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
+    rewritePaths: (paths) =>
+      paths.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
+    rewriteRenames: defaultRewriteRenames,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -252,6 +278,9 @@ const rename = <
       ].filter((p) => p.path !== source);
 
       return result;
+    },
+    rewriteRenames: ({ renames }) => {
+      return [...renames, [source as string, destination]];
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -309,6 +338,7 @@ const addMany = <
 
       return [...paths, ...newPaths];
     },
+    rewriteRenames: defaultRewriteRenames,
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -366,6 +396,10 @@ const renameMany = <
         };
       });
     },
+    rewriteRenames: ({ renames: currentRenames }) => [
+      ...currentRenames,
+      ...(Object.entries(renames) as [string, string][]),
+    ],
   } satisfies Mutator<Shape, RenameManyReturn<Shape, Renames>>;
 };
 
