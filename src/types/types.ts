@@ -49,7 +49,8 @@ export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["transform"]>>;
 
 export type ZodMigratorCurrentShape<T extends ZodMigrations<any, any, any>> =
-  Simplify<ReturnType<T["__get_current_shape"]>>;
+  // Simplify<ReturnType<T["__get_current_shape"]>>;
+  ReturnType<T["__get_current_shape"]>;
 
 export type ZodMigratorStartShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["__get_start_shape"]>>;
@@ -66,8 +67,22 @@ type UpsertProp<Type, Key extends string, Value> = {
   [P in keyof Type | Key]: P extends Key ? Value : Type[P];
 };
 
-export type RenameOutput<
+export type RenameOutputBad<
   T,
   Source extends keyof T,
   Destination extends string
 > = Omit<UpsertProp<T, Destination, T[Source]>, Source>;
+
+export type RenameOutput<
+  out T,
+  in out Source extends keyof T,
+  in out Destination extends string
+> = Omit<
+  {
+    // This helps optimize performance
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    [P in keyof T | Destination]: P extends Destination ? T[Source] : T[P];
+  },
+  Source
+>;

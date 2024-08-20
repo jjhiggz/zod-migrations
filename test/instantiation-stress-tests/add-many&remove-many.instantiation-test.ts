@@ -38,6 +38,7 @@ createZodMigrations({
       age: z.number(),
     }),
   })
+  .consolidate<{ name: string; age: number }>()
   .removeMany(["age", "name"])
   .addMany({
     defaultValues: { name: "", age: 0 },
@@ -54,6 +55,144 @@ createZodMigrations({
       age: z.number(),
     }),
   })
-  .removeMany(["age", "name"]);
-
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .consolidate<{ name: string; age: number }>()
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .consolidate<{ name: string; age: number }>()
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .consolidate<{ name: string; age: number }>()
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .consolidate<{ name: string; age: number }>()
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  })
+  .removeMany(["age", "name"])
+  .addMany({
+    defaultValues: { name: "", age: 0 },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  });
 //   That's the limit.... fuck

@@ -5,7 +5,6 @@ import type {
   FillableObject,
   Mutator,
   PathData,
-  RenameOutput,
   ZodMigratorEndShape,
   ZodMigratorStartShape,
   ZShape,
@@ -23,9 +22,9 @@ export const versionTag = "__zod_migration_version";
 // pathData:  { nestedMigrator?: ZodMigrations , schema: zodSchema, path: string,  } | string
 
 export class ZodMigrations<
-  StartingShape extends FillableObject,
-  CurrentShape extends FillableObject,
-  EndingShape extends FillableObject
+  out StartingShape extends FillableObject,
+  in out CurrentShape extends FillableObject,
+  out EndingShape extends FillableObject
 > {
   /**
    * The amount of evolutions the schema has had since the beginning
@@ -127,7 +126,11 @@ export class ZodMigrations<
     path: Path;
     defaultVal: z.infer<S>;
     schema: S;
-  }) => {
+  }): ZodMigrations<
+    StartingShape,
+    CurrentShape & ObjectWith<Path, z.infer<S>>,
+    EndingShape
+  > => {
     return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() =>
       // @ts-ignore
       mutators.add({ path, schema, defaultVal })
@@ -222,18 +225,20 @@ export class ZodMigrations<
   rename = <
     SourceKey extends keyof CurrentShape,
     DestinationKey extends string
-  >({
-    source,
-    destination,
-  }: {
-    source: SourceKey;
-    destination: DestinationKey;
-  }) => {
-    this.renames.push([source as string, destination]);
-    return this.mutate<
-      RenameOutput<CurrentShape, SourceKey, DestinationKey>
-      // @ts-ignore
-    >(() => mutators.rename(source, destination));
+  >(
+    cb: () => {
+      source: SourceKey;
+      destination: DestinationKey;
+    }
+  ) => {
+    const { destination, source } = cb();
+
+    // @ts-ignore
+    return this.mutate(() => mutators.rename(source, destination));
+  };
+
+  consolidate = <T extends CurrentShape>() => {
+    return this.next() as any as ZodMigrations<StartingShape, T, EndingShape>;
   };
 
   /**
@@ -289,23 +294,6 @@ export class ZodMigrations<
     return this.next<T>() as ZodMigrations<StartingShape, T, EndingShape>;
   };
 
-  private __getDebugData() {
-    const privateData = this.__get_private_data();
-    return {
-      mutators: privateData.mutators.map((mutator) => ({
-        tag: mutator.tag,
-        hasNestedMigrator: !!mutator.nestedMigrator,
-        nestedMigratorPath: mutator.nestedMigrator?.path,
-      })),
-      paths: privateData.paths.map((path) => {
-        return {
-          path: path.path,
-          hasNestedMigrator: !!path.nestedMigrator,
-        };
-      }),
-      renames: this.renames,
-    };
-  }
   stripTags = (input: any) => {
     const schemaEvolutionCount = input[schemaEvolutionCountTag] ?? null;
     const versionTagVal = input[versionTag] ?? null;
@@ -430,28 +418,6 @@ export class ZodMigrations<
     return this;
   };
 
-  __get_private_data() {
-    return {
-      schemaEvolutionCount: this.schemaEvolutionCount,
-      mutators: this.mutators,
-      paths: this.paths,
-      nestedPaths: this.nestedPaths,
-      versions: this.versions,
-      transformsAppliedCount: this.transformsAppliedCount,
-      endingSchema: this.endingSchema,
-      startingSchema: this.startingSchema,
-      renames: this.renames,
-    };
-  }
-
-  __get_current_shape(): CurrentShape {
-    return "dummy" as any as CurrentShape;
-  }
-
-  __get_start_shape(): StartingShape {
-    return "dummy" as any as StartingShape;
-  }
-
   /**
    * create a safe schema from a strict schema
    */
@@ -481,6 +447,28 @@ export class ZodMigrations<
       renames: this.renames,
     });
   };
+
+  __get_private_data() {
+    return {
+      schemaEvolutionCount: this.schemaEvolutionCount,
+      mutators: this.mutators,
+      paths: this.paths,
+      nestedPaths: this.nestedPaths,
+      versions: this.versions,
+      transformsAppliedCount: this.transformsAppliedCount,
+      endingSchema: this.endingSchema,
+      startingSchema: this.startingSchema,
+      renames: this.renames,
+    };
+  }
+
+  __get_current_shape(): CurrentShape {
+    return "dummy" as any as CurrentShape;
+  }
+
+  __get_start_shape(): StartingShape {
+    return "dummy" as any as StartingShape;
+  }
 }
 
 export const createZodMigrations = <
