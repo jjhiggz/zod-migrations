@@ -52,7 +52,6 @@ export type ZodMigratorEndShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["transform"]>>;
 
 export type ZodMigratorCurrentShape<T extends ZodMigrations<any, any, any>> =
-  // Simplify<ReturnType<T["__get_current_shape"]>>;
   ReturnType<T["__get_current_shape"]>;
 
 export type ZodMigratorStartShape<T extends ZodMigrations<any, any, any>> =
