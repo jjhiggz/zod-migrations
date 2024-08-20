@@ -24,3 +24,23 @@ describe("mutator.up", () => {
     });
   });
 });
+
+describe.skip("mutator.isValid", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewritePaths", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewriteRenames", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewriteRenames", () => {
+  // TODO
+});
+
+describe.skip("mutator.beforeMutate", () => {
+  // TODO
+});

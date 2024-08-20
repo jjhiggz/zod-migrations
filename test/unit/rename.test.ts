@@ -4,41 +4,40 @@ import { z } from "zod";
 import { createZodMigrations } from "../../src/zod-migration";
 import { mutators } from "../../src";
 
-describe("rename", () => {
-  it("should not explode when a valid previous version is put in", async () => {
-    const initialPersonSchema = z.object({
-      name: z.string(),
-    });
-
-    const currentPersonSchema = z.object({
-      firstName: z.string(),
-      lastName: z.string(),
-    });
-
-    const personEvolver = createZodMigrations({
-      startingSchema: initialPersonSchema,
-      endingSchema: currentPersonSchema,
+describe("mutator.up", () => {
+  it("should work with rename", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema.merge(
+        z.object({
+          pizza: z.string(),
+        })
+      ),
     })
-      .rename({
-        source: "name",
-        destination: "firstName",
-      })
       .add({
-        path: "lastName",
-        schema: z.string(),
         defaultVal: "",
+        path: "cheese",
+        schema: z.string(),
       })
-      .safeSchema();
+      .mutate(() => mutators.rename("cheese", "pizza"));
 
-    const result = await personEvolver
-      .parseAsync({ firstName: "jon" })
-      .catch((e) => {
-        console.error(e);
-        return null;
-      });
-
-    expect(result).toEqual({ firstName: "jon", lastName: "" });
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      pizza: "",
+    });
   });
+});
+
+describe.skip("mutate.isValid", () => {
+  // TODO
+});
+
+describe.skip("mutate.rewritePaths", () => {
+  // TODO
+});
+
+describe.skip("mutate.rewriteRenames", () => {
+  // TODO
 });
 
 describe("mutator.beforeMutate", () => {
@@ -102,28 +101,39 @@ describe("full transform tests", () => {
     expect(evolver.transform({}).firstName).toEqual("");
     expect(evolver.transform({ name: "jon" }).firstName).toEqual("jon");
   });
-});
 
-describe("mutator.up", () => {
-  it("should work with rename", () => {
-    const evolver = createTestMigrator({
-      endingSchema: testBasePersonSchema.merge(
-        z.object({
-          pizza: z.string(),
-        })
-      ),
-    })
-      .add({
-        defaultVal: "",
-        path: "cheese",
-        schema: z.string(),
-      })
-      .mutate(() => mutators.rename("cheese", "pizza"));
-
-    expect(evolver.transform({})).toEqual({
-      name: "",
-      age: 0,
-      pizza: "",
+  it("should not explode when a valid previous version is put in", async () => {
+    const initialPersonSchema = z.object({
+      name: z.string(),
     });
+
+    const currentPersonSchema = z.object({
+      firstName: z.string(),
+      lastName: z.string(),
+    });
+
+    const personEvolver = createZodMigrations({
+      startingSchema: initialPersonSchema,
+      endingSchema: currentPersonSchema,
+    })
+      .rename({
+        source: "name",
+        destination: "firstName",
+      })
+      .add({
+        path: "lastName",
+        schema: z.string(),
+        defaultVal: "",
+      })
+      .safeSchema();
+
+    const result = await personEvolver
+      .parseAsync({ firstName: "jon" })
+      .catch((e) => {
+        console.error(e);
+        return null;
+      });
+
+    expect(result).toEqual({ firstName: "jon", lastName: "" });
   });
 });

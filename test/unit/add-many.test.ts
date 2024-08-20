@@ -28,74 +28,7 @@ describe("mutator.up", () => {
   });
 });
 
-describe("mutator.rewritePaths", () => {
-  it("should add all the paths from the migration", () => {
-    const result = mutators
-      .addMany({
-        defaultValues: { name: "default", age: 10 },
-        schema: z.object({
-          name: z.string(),
-          age: z.number(),
-        }),
-      })
-      .rewritePaths([]);
-
-    assertPathsEqual(result, [
-      { path: "name", schema: z.string() },
-      { path: "age", schema: z.number() },
-    ]);
-  });
-});
-
-describe("type tests", () => {
-  it("shouldn't break typescript if valid name put in", () => {
-    const schema = z.object({ name: z.string(), age: z.number() });
-
-    mutators
-      //  Shouldn't break TS
-      .addMany<{ otherVal: string }, typeof schema>({
-        defaultValues: { name: "default", age: 10 },
-        schema,
-      });
-  });
-});
-
-describe("beforeMutate", () => {
-  it("shouldn't let me upload name conflict keys", async () => {
-    const schema = z.object({
-      name: z.string(),
-      age: z.number(),
-    });
-    const result = await Promise.resolve()
-      .then(() => {
-        return (
-          mutators
-            // @ts-expect-error should break typescript
-            .addMany<{ name: string; age: number }, typeof schema>({
-              defaultValues: { name: "default", age: 10 },
-              schema,
-            })
-            .beforeMutate({
-              paths: [
-                { path: "name", schema: z.string() },
-                { path: "age", schema: z.number() },
-              ],
-            })
-        );
-      })
-      .catch((e) => e);
-
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe(
-      `These keys conflict with existing keys in your path: ${[
-        "name",
-        "age",
-      ].join()}`
-    );
-  });
-});
-
-describe("isValid", () => {
+describe("mutate.isValid", () => {
   it("should be valid if valid numbers put in", () => {
     const result = mutators
       .addMany({
@@ -139,6 +72,89 @@ describe("isValid", () => {
     expect(result).toEqual(true);
   });
 });
+
+describe("mutator.rewritePaths", () => {
+  it("should add all the paths from the migration", () => {
+    const result = mutators
+      .addMany({
+        defaultValues: { name: "default", age: 10 },
+        schema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+      })
+      .rewritePaths([]);
+
+    assertPathsEqual(result, [
+      { path: "name", schema: z.string() },
+      { path: "age", schema: z.number() },
+    ]);
+  });
+});
+
+describe("mutate.rewriteRenames", () => {
+  it("should not rewrite renames", () => {
+    const rewriteRenames = mutators.addMany({
+      defaultValues: {
+        name: "",
+      },
+      schema: z.object({
+        name: z.string(),
+      }),
+    }).rewriteRenames;
+
+    expect(rewriteRenames({ renames: [] })).toEqual([]);
+  });
+});
+
+describe("mutate.beforeMutate", () => {
+  it("shouldn't let me upload name conflict keys", async () => {
+    const schema = z.object({
+      name: z.string(),
+      age: z.number(),
+    });
+    const result = await Promise.resolve()
+      .then(() => {
+        return (
+          mutators
+            // @ts-expect-error should break typescript
+            .addMany<{ name: string; age: number }, typeof schema>({
+              defaultValues: { name: "default", age: 10 },
+              schema,
+            })
+            .beforeMutate({
+              paths: [
+                { path: "name", schema: z.string() },
+                { path: "age", schema: z.number() },
+              ],
+            })
+        );
+      })
+      .catch((e) => e);
+
+    expect(result).toBeInstanceOf(Error);
+    expect(result.message).toBe(
+      `These keys conflict with existing keys in your path: ${[
+        "name",
+        "age",
+      ].join()}`
+    );
+  });
+});
+
+describe("type tests", () => {
+  it("shouldn't break typescript if valid name put in", () => {
+    const schema = z.object({ name: z.string(), age: z.number() });
+
+    mutators
+      //  Shouldn't break TS
+      .addMany<{ otherVal: string }, typeof schema>({
+        defaultValues: { name: "default", age: 10 },
+        schema,
+      });
+  });
+});
+
 describe("full transform tests", () => {
   it("testAllVersions", () => {
     const evolver = createTestMigrator({
@@ -234,20 +250,5 @@ describe("full transform tests", () => {
         },
       ],
     });
-  });
-});
-
-describe("mutate.rewriteRenames", () => {
-  it("should not rewrite renames", () => {
-    const rewriteRenames = mutators.addMany({
-      defaultValues: {
-        name: "",
-      },
-      schema: z.object({
-        name: z.string(),
-      }),
-    }).rewriteRenames;
-
-    expect(rewriteRenames({ renames: [] })).toEqual([]);
   });
 });

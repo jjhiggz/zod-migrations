@@ -3,20 +3,6 @@ import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
 import { mutators } from "../../src";
 
-describe("remove", () => {
-  it("should poop out the right thing", () => {
-    const evolver = createTestMigrator({
-      endingSchema: testBasePersonSchema.omit({ age: true }),
-    }).remove("age");
-
-    expect(evolver.transform({})).toEqual({ name: "" });
-    expect(evolver.transform({ name: "Jon" })).toEqual({ name: "Jon" });
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    (): { name: string } => evolver.transform({});
-  });
-});
-
 describe("mutate.up", () => {
   it("should work with removeOne", () => {
     const evolver = createTestMigrator({
@@ -33,6 +19,36 @@ describe("mutate.up", () => {
       name: "",
       age: 0,
     });
+  });
+});
+
+describe.skip("mutate.isValid", () => {
+  // TODO
+});
+
+describe.skip("mutate.rewritePaths", () => {
+  // TODO
+});
+
+describe("mutate.rewriteRenames", () => {
+  it("should remove renames if points to the field that is renamed", () => {
+    const rewriteRenames = mutators.removeOne<
+      { name: string; age: number },
+      "name"
+    >("name").rewriteRenames;
+
+    const result = rewriteRenames({
+      renames: [
+        ["a", "b"],
+        ["startName", "firstName"],
+        ["firstName", "name"],
+        ["c", "d"],
+      ],
+    });
+    expect(result).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
   });
 });
 
@@ -65,24 +81,16 @@ describe("mutate.beforeMutate", () => {
   });
 });
 
-describe("mutate.rewriteRenames", () => {
-  it("should remove renames if points to the field that is renamed", () => {
-    const rewriteRenames = mutators.removeOne<
-      { name: string; age: number },
-      "name"
-    >("name").rewriteRenames;
+describe("tests with migrator", () => {
+  it("should poop out the right thing", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema.omit({ age: true }),
+    }).remove("age");
 
-    const result = rewriteRenames({
-      renames: [
-        ["a", "b"],
-        ["startName", "firstName"],
-        ["firstName", "name"],
-        ["c", "d"],
-      ],
-    });
-    expect(result).toEqual([
-      ["a", "b"],
-      ["c", "d"],
-    ]);
+    expect(evolver.transform({})).toEqual({ name: "" });
+    expect(evolver.transform({ name: "Jon" })).toEqual({ name: "Jon" });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    (): { name: string } => evolver.transform({});
   });
 });
