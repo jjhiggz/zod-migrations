@@ -2,10 +2,28 @@ import { describe, expect, it } from "vitest";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
 
-describe("isValid", () => {
-  it("todo", () => {
-    expect(true).toBe(true);
-  });
+describe.skip("mutator.up", () => {
+  // TODO
+});
+
+describe.skip("mutator.isValid", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewritePaths", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewriteRenames", () => {
+  // TODO
+});
+
+describe.skip("mutator.rewriteRenames", () => {
+  // TODO
+});
+
+describe.skip("mutator.beforeMutate", () => {
+  // TODO
 });
 
 describe("full transform tests", () => {

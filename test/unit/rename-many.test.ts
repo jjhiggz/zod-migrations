@@ -6,6 +6,74 @@ import { mutators, testAllVersions } from "../../src";
 import { Equals } from "../../src/types/Equals";
 import { ZodMigratorEndShape } from "../../src/types/types";
 
+describe("mutator.up", () => {
+  it("should mutate up properly", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema
+        .merge(z.object({ dummy: z.string() }))
+        .omit({ name: true, age: true })
+        .merge(
+          z.object({
+            newAge: z.number(),
+            newName: z.string(),
+          })
+        ),
+    })
+      .add({
+        path: "dummy",
+        defaultVal: "",
+        schema: z.string(),
+      })
+      .mutate((shape) => {
+        const renames: Partial<Record<keyof typeof shape, string>> = {
+          age: "newAge",
+          name: "newName",
+        };
+
+        return mutators.renameMany<typeof shape, typeof renames>({
+          renames,
+        });
+      });
+
+    testAllVersions({
+      evolver,
+      expect,
+      schema: z.object({
+        newName: z.string(),
+        newAge: z.number(),
+        dummy: z.string(),
+      }),
+      startData: {},
+      customTestCase: [
+        {
+          input: { name: "jon", age: 12, dummy: "" },
+          output: {
+            newName: "jon",
+            newAge: 12,
+            dummy: "",
+          },
+        },
+      ],
+    });
+  });
+});
+
+describe.skip("mutate.isValid", () => {
+  // TODO
+});
+
+describe.skip("mutate.rewritePaths", () => {
+  // TODO
+});
+
+describe.skip("mutate.rewriteRenames", () => {
+  // TODO
+});
+
+describe.skip("mutate.beforeMutate", () => {
+  // TODO
+});
+
 describe("full transforms test", () => {
   it("should work for builtin rename many", () => {
     const evolver = createTestMigrator({
@@ -42,58 +110,6 @@ describe("full transforms test", () => {
         { newName: string; newAge: number; dummy: string }
       >;
     }
-
-    testAllVersions({
-      evolver,
-      expect,
-      schema: z.object({
-        newName: z.string(),
-        newAge: z.number(),
-        dummy: z.string(),
-      }),
-      startData: {},
-      customTestCase: [
-        {
-          input: { name: "jon", age: 12, dummy: "" },
-          output: {
-            newName: "jon",
-            newAge: 12,
-            dummy: "",
-          },
-        },
-      ],
-    });
-  });
-});
-
-describe("mutator.up", () => {
-  it("should mutate up properly", () => {
-    const evolver = createTestMigrator({
-      endingSchema: testBasePersonSchema
-        .merge(z.object({ dummy: z.string() }))
-        .omit({ name: true, age: true })
-        .merge(
-          z.object({
-            newAge: z.number(),
-            newName: z.string(),
-          })
-        ),
-    })
-      .add({
-        path: "dummy",
-        defaultVal: "",
-        schema: z.string(),
-      })
-      .mutate((shape) => {
-        const renames: Partial<Record<keyof typeof shape, string>> = {
-          age: "newAge",
-          name: "newName",
-        };
-
-        return mutators.renameMany<typeof shape, typeof renames>({
-          renames,
-        });
-      });
 
     testAllVersions({
       evolver,

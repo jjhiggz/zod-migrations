@@ -4,6 +4,35 @@ import { mutators, schemaEvolutionCountTag } from "../../src";
 import { z } from "zod";
 import { createZodMigrations } from "../../src/zod-migration";
 
+describe("mutator.up", () => {
+  it("should work base case", () => {
+    const nestedMigrator = createTestMigrator({
+      endingSchema: testBasePersonSchema,
+    });
+
+    const transformed = mutators
+      .addNestedArray({
+        nestedMigrator,
+        path: "nested",
+        currentSchema: testBasePersonSchema,
+      })
+      .up({
+        input: {
+          nested: [{}],
+        },
+      });
+
+    expect(transformed).toEqual({
+      nested: [
+        {
+          name: "",
+          age: 0,
+        },
+      ],
+    });
+  });
+});
+
 describe("mutator.isValid", () => {
   it("isValid should succeed if path is there", () => {
     const nestedMigrator = createTestMigrator({
@@ -70,32 +99,17 @@ describe("mutator.isValid", () => {
   });
 });
 
-describe("mutator.up", () => {
-  it("should work base case", () => {
-    const nestedMigrator = createTestMigrator({
-      endingSchema: testBasePersonSchema,
-    });
+describe.skip("mutator.rewritePaths", () => {
+  //TODO
+});
 
-    const transformed = mutators
-      .addNestedArray({
-        nestedMigrator,
-        path: "nested",
-        currentSchema: testBasePersonSchema,
-      })
-      .up({
-        input: {
-          nested: [{}],
-        },
-      });
+describe.skip("mutator.rewriteRenames", () => {
+  // TODO
+});
 
-    expect(transformed).toEqual({
-      nested: [
-        {
-          name: "",
-          age: 0,
-        },
-      ],
-    });
+describe.skip("beforeMutate", () => {
+  it("should throw an error for name conflict", () => {
+    // TODO
   });
 });
 

@@ -4,6 +4,46 @@ import { mutators } from "../../src";
 import { createZodMigrations } from "../../src/zod-migration";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 
+describe("mutator.up", () => {
+  it("should work", () => {
+    const transformed = mutators
+      .add({
+        path: "someValue",
+        defaultVal: "",
+        schema: z.string(),
+      })
+      .up({
+        input: {},
+      });
+
+    expect(transformed).toEqual({
+      someValue: "",
+    });
+  });
+
+  it("should work just like add with add mutator", () => {
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema.merge(
+        z.object({
+          cheese: z.string(),
+        })
+      ),
+    }).mutate(() =>
+      mutators.add({
+        defaultVal: "swiss",
+        path: "cheese",
+        schema: z.string(),
+      })
+    );
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+      cheese: "swiss",
+    });
+  });
+});
+
 describe("mutator.isValid", () => {
   it("isValid should succeed if path is there", () => {
     const valid = mutators
@@ -56,65 +96,19 @@ describe("mutator.isValid", () => {
   });
 });
 
-describe("mutator.up", () => {
-  it("should work", () => {
-    const transformed = mutators
-      .add({
-        path: "someValue",
-        defaultVal: "",
-        schema: z.string(),
-      })
-      .up({
-        input: {},
-      });
-
-    expect(transformed).toEqual({
-      someValue: "",
-    });
-  });
-
-  it("should work just like add with add mutator", () => {
-    const evolver = createTestMigrator({
-      endingSchema: testBasePersonSchema.merge(
-        z.object({
-          cheese: z.string(),
-        })
-      ),
-    }).mutate(() =>
-      mutators.add({
-        defaultVal: "swiss",
-        path: "cheese",
-        schema: z.string(),
-      })
-    );
-
-    expect(evolver.transform({})).toEqual({
-      name: "",
-      age: 0,
-      cheese: "swiss",
-    });
-  });
+describe.skip("mutate.rewritePaths", () => {
+  // TODO
 });
 
-describe("transform", () => {
-  it("should work with a transform function", () => {
-    const migrator = createZodMigrations({
-      endingSchema: testBasePersonSchema,
-      startingSchema: z.object({}),
-    }).add({ defaultVal: "", path: "someValue", schema: z.string() });
+describe("mutate.rewriteRenames", () => {
+  it("should not rewrite renames", () => {
+    const rewriteRenames = mutators.add({
+      path: "name",
+      schema: z.string(),
+      defaultVal: "",
+    }).rewriteRenames;
 
-    expect(migrator.transform({})).toEqual({
-      someValue: "",
-    });
-  });
-
-  it("should poop out all of the defaults if empty object put in", () => {
-    const evolver = createTestMigrator({ endingSchema: testBasePersonSchema });
-
-    expect(evolver.transform({})).toEqual({
-      name: "",
-      age: 0,
-    });
+    expect(rewriteRenames({ renames: [] })).toEqual([]);
   });
 });
 
@@ -137,5 +131,27 @@ describe("mutator.beforeMutate", () => {
         return null;
       });
     expect(result).toBe(null);
+  });
+});
+
+describe("transform", () => {
+  it("should work with a transform function", () => {
+    const migrator = createZodMigrations({
+      endingSchema: testBasePersonSchema,
+      startingSchema: z.object({}),
+    }).add({ defaultVal: "", path: "someValue", schema: z.string() });
+
+    expect(migrator.transform({})).toEqual({
+      someValue: "",
+    });
+  });
+
+  it("should poop out all of the defaults if empty object put in", () => {
+    const evolver = createTestMigrator({ endingSchema: testBasePersonSchema });
+
+    expect(evolver.transform({})).toEqual({
+      name: "",
+      age: 0,
+    });
   });
 });
