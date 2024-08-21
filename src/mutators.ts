@@ -190,7 +190,10 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
   return {
     up,
     tag: "removeOne",
-    isValid: ({ input }) => !(path in input),
+    isValid: ({ input, renames }) =>
+      getValidRenames(renames, path.toString()).every(
+        (path) => !(path in input)
+      ),
     rewritePaths: (input) =>
       input.filter((pathInEvolver) => pathInEvolver.path !== path),
     beforeMutate: ({ paths }) => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
@@ -22,8 +23,46 @@ describe("mutate.up", () => {
   });
 });
 
-describe.skip("mutate.isValid", () => {
-  // TODO
+describe("mutate.isValid", () => {
+  it("isValid should succeed if path does not exist", () => {
+    const valid = mutators.removeOne<{ name: string }, "name">("name").isValid({
+      input: {} as any,
+      paths: [],
+      renames: [],
+    });
+
+    expect(valid).toBe(true);
+  });
+
+  it("isValid should fail if path does exist", () => {
+    const valid = mutators.removeOne<{ name: string }, "name">("name").isValid({
+      input: { name: "jon" } as any,
+      paths: ["name"],
+      renames: [],
+    });
+
+    expect(valid).toBe(false);
+  });
+
+  it("isValid should fail if path does exist in rename", () => {
+    const valid = mutators.removeOne<{ name: string }, "name">("name").isValid({
+      input: { newName: "jon" } as any,
+      paths: ["newName"],
+      renames: [["name", "newName"]],
+    });
+
+    expect(valid).toBe(false);
+  });
+
+  it("isValid should fail if path does exist in rename", () => {
+    const valid = mutators.removeOne<{ name: string }, "name">("name").isValid({
+      input: { newName: "jon" } as any,
+      paths: ["newName"],
+      renames: [["name", "newName"]],
+    });
+
+    expect(valid).toBe(false);
+  });
 });
 
 describe.skip("mutate.rewritePaths", () => {
