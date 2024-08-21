@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { mutators } from "../../src";
 import { createZodMigrations } from "../../src/zod-migration";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 
 describe("mutator.up", () => {
   it("should work", () => {
@@ -96,8 +100,16 @@ describe("mutator.isValid", () => {
   });
 });
 
-describe.skip("mutate.rewritePaths", () => {
-  // TODO
+describe("mutate.rewritePaths", () => {
+  it("should add the path to paths", () => {
+    const rewritePaths = mutators.add({
+      path: "name",
+      schema: z.string(),
+      defaultVal: "",
+    }).rewritePaths;
+
+    assertPathsEqual(rewritePaths([]), [{ path: "name", schema: z.string() }]);
+  });
 });
 
 describe("mutate.rewriteRenames", () => {
