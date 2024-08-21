@@ -22,17 +22,12 @@ const defaultRewriteRenames: Mutator<any, any>["rewriteRenames"] = ({
   renames,
 }) => renames;
 
-export const getValidRenames = (renames: [string, string][], path: string) => {
-  const chain = [path];
-  let prevPath = path;
-  for (const rename of renames) {
-    if (rename[0] === prevPath) {
-      chain.push(rename[1]);
-      prevPath = rename[1];
-    }
-  }
-
+export const getValidBackwardRenames = (
+  renames: [string, string][],
+  path: string
+) => {
   let currPath = path;
+  const chain: string[] = [];
 
   for (const rename of reverse(renames)) {
     if (rename[1] === currPath) {
@@ -42,6 +37,31 @@ export const getValidRenames = (renames: [string, string][], path: string) => {
   }
 
   return unique(chain);
+};
+
+export const getValidForwardRenames = (
+  renames: [string, string][],
+  path: string
+) => {
+  const chain = [path];
+  let prevPath = path;
+  for (const rename of renames) {
+    if (rename[0] === prevPath) {
+      chain.push(rename[1]);
+      prevPath = rename[1];
+    }
+  }
+
+  return unique(chain);
+};
+export const getAllValidRenames = (
+  renames: [string, string][],
+  path: string
+) => {
+  return unique([
+    ...getValidForwardRenames(renames, path),
+    ...getValidBackwardRenames(renames, path),
+  ]);
 };
 
 const add = <
@@ -66,7 +86,7 @@ const add = <
     up,
     // @ts-ignore
     isValid: ({ input, renames }) => {
-      return getValidRenames(renames, path).some((path) => {
+      return getAllValidRenames(renames, path).some((path) => {
         // @ts-ignore
         return isValid(input?.[path], schema);
       });
@@ -109,7 +129,7 @@ const addNestedArray = <
     up,
     // @ts-ignore
     isValid: ({ input, renames }) => {
-      return getValidRenames(renames, path).some((rename) => {
+      return getAllValidRenames(renames, path).some((rename) => {
         const atPath = (input as any)[rename];
         if (Array.isArray(atPath)) {
           if (atPath.length === 0) return true;
@@ -191,7 +211,7 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
     up,
     tag: "removeOne",
     isValid: ({ input, renames }) =>
-      getValidRenames(renames, path.toString()).every(
+      getAllValidRenames(renames, path.toString()).every(
         (path) => !(path in input)
       ),
     rewritePaths: (input) =>
@@ -202,7 +222,7 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
       }
     },
     rewriteRenames: ({ renames }) => {
-      const relatedRenames = getValidRenames(renames, path as string);
+      const relatedRenames = getAllValidRenames(renames, path as string);
       return renames.filter(
         ([renameKey]) => !relatedRenames.includes(renameKey)
       );
@@ -251,8 +271,16 @@ const rename = <
     up,
     tag: "rename",
     // @ts-ignore
-    isValid: ({ input }) => {
-      return destination in input;
+    // Todo: Add full PathData shape to isValid rather than just a string array
+    // Technically here we should be validating that the schema is the same
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isValid: ({ input, paths, renames }) => {
+      const forwardRenames = getValidForwardRenames(
+        renames,
+        destination
+      ).filter((rename) => rename !== source);
+
+      return forwardRenames.some((rename) => rename in input);
     },
     beforeMutate: ({ paths }) => {
       if (paths.some((pathData) => pathData.path === destination)) {
@@ -310,7 +338,7 @@ const addMany = <
 
       return entries.every((entry) => {
         const schemaAtEntry = schema.shape[entry[0]];
-        return getValidRenames(renames, entry[0]).some((rename) => {
+        return getAllValidRenames(renames, entry[0]).some((rename) => {
           const key = rename;
           // @ts-ignore
           return schemaAtEntry?.safeParse(input?.[key]).success;

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { z } from "zod";
 import { createZodMigrations } from "../../src/zod-migration";
 import { mutators } from "../../src";
@@ -28,16 +32,106 @@ describe("mutator.up", () => {
   });
 });
 
-describe.skip("mutate.isValid", () => {
-  // TODO
+describe("mutate.isValid", () => {
+  // I'm actually not sure this should be the case
+  it("should be invalid if source path found ", () => {
+    const isValid = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).isValid;
+
+    expect(
+      isValid({
+        input: { name: "jon" },
+        paths: [],
+        renames: [["name", "newName"]],
+      })
+    ).toBe(false);
+  });
+
+  it("should be invalid if source path found ", () => {
+    const isValid = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).isValid;
+
+    expect(
+      isValid({
+        input: { name: "jon" },
+        paths: [],
+        renames: [],
+      })
+    ).toBe(false);
+  });
+
+  it("is valid if  destination found", () => {
+    const isValid = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).isValid;
+
+    expect(
+      isValid({
+        input: { newName: "jon", name: "dummy" } as any,
+        paths: [],
+        renames: [],
+      })
+    ).toBe(true);
+  });
+
+  it("is valid if it WILL get renamed to the correct value", () => {
+    const isValid = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).isValid;
+
+    expect(
+      isValid({
+        input: { newName: "jon" } as any,
+        paths: [],
+        renames: [
+          ["name", "newName"],
+          ["newName", "newNewName"],
+        ],
+      })
+    ).toBe(true);
+  });
+  it("should be valid");
 });
 
-describe.skip("mutate.rewritePaths", () => {
-  // TODO
+describe("mutate.rewritePaths", () => {
+  it("filters out source and adds destination", () => {
+    const rewritePaths = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).rewritePaths;
+    assertPathsEqual(rewritePaths([{ path: "name", schema: z.string() }]), [
+      { path: "newName", schema: z.string() },
+    ]);
+  });
 });
 
-describe.skip("mutate.rewriteRenames", () => {
-  // TODO
+describe("mutate.rewriteRenames", () => {
+  it("adds renames", () => {
+    const rewriteRenames = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).rewriteRenames;
+
+    expect(rewriteRenames({ renames: [] })).toEqual([["name", "newName"]]);
+  });
+
+  it("adds renames if there are existing renames", () => {
+    const rewriteRenames = mutators.rename<{ name: string }, "name", "newName">(
+      "name",
+      "newName"
+    ).rewriteRenames;
+
+    expect(rewriteRenames({ renames: [["a", "b"]] })).toEqual([
+      ["a", "b"],
+      ["name", "newName"],
+    ]);
+  });
 });
 
 describe("mutator.beforeMutate", () => {
