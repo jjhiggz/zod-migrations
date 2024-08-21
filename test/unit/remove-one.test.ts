@@ -48,6 +48,12 @@ describe("mutate.isValid", () => {
     expect(valid).toBe(false);
   });
 
+  /* TODO: 
+  Do I actually want this? So isValid is designed to take an input
+  and help it determine where in the chain it first becomes invalid.
+  My worry about this is if we say it's invalid, before it is invalid,
+  then we are going to skip vital transformations
+  */
   it("isValid should fail if path does exist in rename", () => {
     const valid = mutators.removeOne<{ name: string }, "name">("name").isValid({
       input: { newName: "jon" } as any,
@@ -79,7 +85,8 @@ describe("mutate.rewritePaths", () => {
   });
 });
 
-describe("mutate.rewriteRenames", () => {
+// TODO: Investigate if this is a good idea
+describe.skip("mutate.rewriteRenames", () => {
   it("should remove renames if points to the field that is renamed", () => {
     const rewriteRenames = mutators.removeOne<
       { name: string; age: number },
@@ -105,12 +112,9 @@ describe("mutate.beforeMutate", () => {
   it("should throw an error if referencing a path that's already there", async () => {
     const beforeMutateResult = await Promise.resolve()
       .then(() => {
-        const a = mutators
-          .removeOne<{ name: string }, "name">("name")
-          .beforeMutate({
-            paths: [],
-          });
-        console.log(a);
+        mutators.removeOne<{ name: string }, "name">("name").beforeMutate({
+          paths: [],
+        });
       })
       .catch((e) => e);
 

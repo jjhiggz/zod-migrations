@@ -62,8 +62,8 @@ describe("mutator.up", () => {
   });
 });
 
-describe.skip("mutate.isValid", () => {
-  // TODO
+describe("mutate.isValid", () => {
+  it("is valid if all ", () => {});
 });
 
 describe("mutate.rewritePaths", () => {
@@ -90,10 +90,101 @@ describe("mutate.rewritePaths", () => {
   });
 });
 
-describe.skip("mutate.rewriteRenames", () => {});
+describe("mutate.rewriteRenames", () => {
+  it("renames all nessecary things", () => {
+    const rewriteRenames = mutators.renameMany<
+      { name: string; age: number; unchanged: string },
+      { name: "newName"; age: "newAge" }
+    >({
+      renames: { name: "newName", age: "newAge" },
+    }).rewriteRenames;
 
-describe.skip("mutate.beforeMutate", () => {
-  // TODO
+    const actual = rewriteRenames({ renames: [] });
+
+    const expected = [
+      ["name", "newName"],
+      ["age", "newAge"],
+    ];
+
+    expect(actual).toEqual(expected);
+  });
+
+  it("tracks all old renames, so that can be back tracked on later", () => {
+    const rewriteRenames = mutators.renameMany<
+      { name: string; age: number; unchanged: string },
+      { name: "newName"; age: "newAge" }
+    >({
+      renames: { name: "newName", age: "newAge" },
+    }).rewriteRenames;
+
+    const actual = rewriteRenames({
+      renames: [
+        ["name", "newName"],
+        ["newName", "name"],
+      ],
+    });
+
+    const expected = [
+      ["name", "newName"],
+      ["newName", "name"],
+      ["name", "newName"],
+      ["age", "newAge"],
+    ];
+
+    expect(actual).toEqual(expected);
+  });
+});
+
+describe("mutate.beforeMutate", () => {
+  it("doesn't throw an error if all rename keys exist, and values don't exist", async () => {
+    const beforeMutate = mutators.renameMany<
+      { name: string; age: number; unchanged: string },
+      { name: "newName"; age: "newAge" }
+    >({
+      renames: { name: "newName", age: "newAge" },
+    }).beforeMutate;
+
+    const result = await Promise.resolve()
+      .then(() => {
+        beforeMutate({
+          paths: [
+            { path: "name", schema: z.string() },
+            { path: "age", schema: z.number() },
+            { path: "unchanged", schema: z.string() },
+          ],
+        });
+        return true;
+      })
+      .catch((e) => e);
+
+    expect(result).not.toBeInstanceOf(Error);
+  });
+
+  it("throws an error if all rename keys exist, but conflicting values do exist", async () => {
+    const beforeMutate = mutators.renameMany<
+      { name: string; age: number; unchanged: string },
+      { name: "newName"; age: "newAge" }
+    >({
+      // @ts-expect-error this is an invalid state but we need to test it
+      renames: { name: "newName", age: "newAge", newAge: 1 },
+    }).beforeMutate;
+
+    const result = await Promise.resolve()
+      .then(() => {
+        beforeMutate({
+          paths: [
+            { path: "name", schema: z.string() },
+            { path: "newName", schema: z.string() },
+            { path: "age", schema: z.number() },
+            { path: "unchanged", schema: z.string() },
+          ],
+        });
+        return true;
+      })
+      .catch((e) => e);
+
+    expect(result).toBeInstanceOf(Error);
+  });
 });
 
 describe("full transforms test", () => {

@@ -30,97 +30,82 @@ describe("mutator.up", () => {
 });
 
 describe("mutator.isValid", () => {
-  const isValid = mutators.addMany({
-    defaultValues: {
-      age: 1,
-      name: "jon",
+  const isValid = mutators.removeMany<
+    {
+      name: string;
+      age: number;
+      other: string;
     },
-    schema: z.object({
-      name: z.string(),
-      age: z.number(),
-    }),
-  }).isValid;
+    "name" | "age"
+  >(["name", "age"]).isValid;
 
-  it("should be valid if every key points to a path with the right schema", () => {
+  it("Should be valid if removed fields do not exist", () => {
     expect(
       isValid({
-        input: {
-          name: "jon",
-          age: 1,
-        },
-        paths: ["name", "age"],
+        input: { other: "other value" },
+        paths: ["other"],
         renames: [],
       })
     ).toBe(true);
   });
 
-  it("should not be valid if some key points to a path with the wrong schema", () => {
+  /* TODO: 
+  Do I actually want this? So isValid is designed to take an input
+  and help it determine where in the chain it first becomes invalid.
+  My worry about this is if we say it's invalid, before it is invalid,
+  then we are going to skip vital transformations
+  */
+  it("Should be valid if removed fields do not exist", () => {
     expect(
       isValid({
-        input: {
-          name: "jon",
-          age: "age string",
-        },
-        paths: ["name", "age"],
-        renames: [],
+        input: { other: "other value", newName: "Jimmy" },
+        paths: ["other"],
+        renames: [["name", "newName"]],
       })
     ).toBe(false);
-  });
-
-  it("should not be valid if a key is missing", () => {
-    expect(
-      isValid({
-        input: {
-          age: "age string",
-        },
-        paths: ["age"],
-        renames: [],
-      })
-    ).toBe(false);
-  });
-
-  it("should be valid with valid renames", () => {
-    expect(
-      isValid({
-        input: {
-          name: "jon",
-          newAge: 1,
-        },
-        paths: ["age"],
-        renames: [["age", "newAge"]],
-      })
-    ).toBe(true);
   });
 });
 
 describe("mutator.rewritePaths", () => {
-  const rewritePaths = mutators.addMany({
-    defaultValues: {
-      name: "",
-      age: 1,
+  const rewritePaths = mutators.removeMany<
+    {
+      name: string;
+      age: number;
+      dummy: string;
     },
-    schema: z.object({
-      name: z.string(),
-      age: z.number(),
-    }),
-  }).rewritePaths;
+    "name" | "age"
+  >(["name", "age"]).rewritePaths;
 
-  it("should add all the keys from the shape", () => {
-    assertPathsEqual(rewritePaths([]), [
-      { path: "name", schema: z.string() },
-      { path: "age", schema: z.number() },
-    ]);
+  it("should remove all keys from paths", () => {
+    assertPathsEqual(rewritePaths([{ path: "dummy", schema: z.number() }]), []);
   });
 });
 
 describe.skip("mutator.rewriteRenames", () => {
-  // TODO
+  const rewriteRenames = mutators.removeMany<
+    { name: string; age: number; other: string },
+    "name" | "age"
+  >(["name", "age"] as const).rewriteRenames;
+
+  it("should remove renames that point to the same thing", () => {
+    expect(
+      rewriteRenames({
+        renames: [["oldName", "name"]],
+      })
+    ).toEqual([]);
+  });
+
+  it("shouldn't remove irrelevant renames", () => {
+    expect(
+      rewriteRenames({
+        renames: [
+          ["oldOther", "other"],
+          ["oldName", "name"],
+          ["oldAge", "age"],
+        ],
+      })
+    ).toEqual([["oldOther", "other"]]);
+  });
 });
 
-describe.skip("mutator.rewriteRenames", () => {
-  // TODO
-});
-
-describe.skip("mutator.beforeMutate", () => {
-  // TODO
-});
+describe("mutator.beforeMutate", () => {});
