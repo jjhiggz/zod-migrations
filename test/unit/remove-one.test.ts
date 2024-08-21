@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { z } from "zod";
 import { mutators } from "../../src";
 
@@ -65,8 +69,14 @@ describe("mutate.isValid", () => {
   });
 });
 
-describe.skip("mutate.rewritePaths", () => {
-  // TODO
+describe("mutate.rewritePaths", () => {
+  it("should remove path from paths", () => {
+    const { rewritePaths } = mutators.removeOne<{ name: string }, "name">(
+      "name"
+    );
+
+    assertPathsEqual(rewritePaths([{ path: "name", schema: z.string() }]), []);
+  });
 });
 
 describe("mutate.rewriteRenames", () => {
