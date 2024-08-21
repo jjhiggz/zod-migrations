@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { z } from "zod";
 import { mutators } from "../../src";
 
@@ -89,8 +93,24 @@ describe("mutator.isValid", () => {
   });
 });
 
-describe.skip("mutator.rewritePaths", () => {
-  // TODO
+describe("mutator.rewritePaths", () => {
+  const rewritePaths = mutators.addMany({
+    defaultValues: {
+      name: "",
+      age: 1,
+    },
+    schema: z.object({
+      name: z.string(),
+      age: z.number(),
+    }),
+  }).rewritePaths;
+
+  it("should add all the keys from the shape", () => {
+    assertPathsEqual(rewritePaths([]), [
+      { path: "name", schema: z.string() },
+      { path: "age", schema: z.number() },
+    ]);
+  });
 });
 
 describe.skip("mutator.rewriteRenames", () => {
