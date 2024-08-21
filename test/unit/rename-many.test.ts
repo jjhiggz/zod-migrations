@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { z } from "zod";
 import { mutators, testAllVersions } from "../../src";
 import { Equals } from "../../src/types/Equals";
@@ -62,13 +66,31 @@ describe.skip("mutate.isValid", () => {
   // TODO
 });
 
-describe.skip("mutate.rewritePaths", () => {
-  // TODO
+describe("mutate.rewritePaths", () => {
+  it("removes all keys from the paths, and adds all values to the paths with the correct schemas", () => {
+    const rewritePaths = mutators.renameMany<
+      { name: string; age: number; unchanged: string },
+      { name: "newName"; age: "newAge" }
+    >({
+      renames: { name: "newName", age: "newAge" },
+    }).rewritePaths;
+    const actual = rewritePaths([
+      { path: "name", schema: z.string() },
+      { path: "age", schema: z.number() },
+      { path: "unchanged", schema: z.string() },
+    ]);
+
+    const expected = [
+      { path: "newName", schema: z.string() },
+      { path: "newAge", schema: z.number() },
+      { path: "unchanged", schema: z.string() },
+    ];
+
+    assertPathsEqual(actual, expected);
+  });
 });
 
-describe.skip("mutate.rewriteRenames", () => {
-  // TODO
-});
+describe.skip("mutate.rewriteRenames", () => {});
 
 describe.skip("mutate.beforeMutate", () => {
   // TODO
