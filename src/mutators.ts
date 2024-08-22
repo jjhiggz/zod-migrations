@@ -137,6 +137,7 @@ const addNestedArray = <
             try {
               // @ts-ignore
               return isValid(nestedMigrator.transform(val), schema);
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (_e) {
               return false;
             }
@@ -235,10 +236,6 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
       }
     },
     rewriteRenames: ({ renames }) => {
-      // const relatedRenames = getAllValidRenames(renames, path as string);
-      // return renames.filter(
-      //   ([renameKey]) => !relatedRenames.includes(renameKey)
-      // );
       return renames;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
@@ -269,15 +266,6 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
       paths.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
 
     rewriteRenames: ({ renames }) => {
-      // const allValidRenames = paths
-      //   .map((path) => getAllValidRenames(renames, path.toString()))
-      //   .flat();
-
-      // return renames.filter((rename) => {
-      //   return !allValidRenames.some(
-      //     (validRename) => rename[0] === validRename
-      //   );
-      // });
       return renames;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;

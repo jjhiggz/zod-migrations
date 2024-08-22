@@ -72,7 +72,7 @@ describe("mutate.isValid", () => {
 
     expect(
       isValid({
-        input: { newName: "jon", name: "dummy" } as any,
+        input: { newName: "jon", name: "dummy" },
         paths: [],
         renames: [],
       })
@@ -87,7 +87,7 @@ describe("mutate.isValid", () => {
 
     expect(
       isValid({
-        input: { newName: "jon" } as any,
+        input: { newName: "jon" },
         paths: [],
         renames: [
           ["name", "newName"],

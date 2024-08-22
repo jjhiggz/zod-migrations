@@ -338,6 +338,7 @@ describe("run", () => {
     const selectedTag = false;
     const filteredTestCases = testCases.filter((testCase) => {
       if (selectedTag) {
+        //@ts-expect-error this is fine
         return testCase.tag === selectedTag;
       }
       return true;
