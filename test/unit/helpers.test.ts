@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getValidRenames } from "../../src/mutators";
+import { getAllValidRenames } from "../../src/mutators";
 import { testAllVersions } from "../../src";
 import { createTestMigrator, testBasePersonSchema } from "../utils";
 import { z } from "zod";
@@ -15,7 +15,7 @@ const sortByAlphabetical = (input: string[]) => {
 
 describe("getValidRenames", () => {
   it("should find one valid rename", () => {
-    expect(getValidRenames([["name", "firstName"]], "name")).toEqual([
+    expect(getAllValidRenames([["name", "firstName"]], "name")).toEqual([
       "name",
       "firstName",
     ]);
@@ -23,7 +23,7 @@ describe("getValidRenames", () => {
 
   it("should work if I rename twice", () => {
     expect(
-      getValidRenames(
+      getAllValidRenames(
         [
           ["name", "firstName"],
           ["firstName", "newFirstName"],
@@ -35,7 +35,7 @@ describe("getValidRenames", () => {
 
   it("should work if I rename twice backward", () => {
     const result = pipe(
-      getValidRenames(
+      getAllValidRenames(
         [
           ["name", "firstName"],
           ["firstName", "newFirstName"],
@@ -51,7 +51,7 @@ describe("getValidRenames", () => {
 
   it("should work if I rename back and forth", () => {
     expect(
-      getValidRenames(
+      getAllValidRenames(
         [
           ["name", "firstName"],
           ["firstName", "name"],
@@ -63,7 +63,7 @@ describe("getValidRenames", () => {
 
   it("should work with multiple renames", () => {
     expect(
-      getValidRenames(
+      getAllValidRenames(
         [
           ["name", "name2"],
           ["name2", "name3"],

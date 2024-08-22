@@ -22,17 +22,12 @@ const defaultRewriteRenames: Mutator<any, any>["rewriteRenames"] = ({
   renames,
 }) => renames;
 
-export const getValidRenames = (renames: [string, string][], path: string) => {
-  const chain = [path];
-  let prevPath = path;
-  for (const rename of renames) {
-    if (rename[0] === prevPath) {
-      chain.push(rename[1]);
-      prevPath = rename[1];
-    }
-  }
-
+export const getValidBackwardRenames = (
+  renames: [string, string][],
+  path: string
+) => {
   let currPath = path;
+  const chain: string[] = [];
 
   for (const rename of reverse(renames)) {
     if (rename[1] === currPath) {
@@ -42,6 +37,31 @@ export const getValidRenames = (renames: [string, string][], path: string) => {
   }
 
   return unique(chain);
+};
+
+export const getValidForwardRenames = (
+  renames: [string, string][],
+  path: string
+) => {
+  const chain = [path];
+  let prevPath = path;
+  for (const rename of renames) {
+    if (rename[0] === prevPath) {
+      chain.push(rename[1]);
+      prevPath = rename[1];
+    }
+  }
+
+  return unique(chain);
+};
+export const getAllValidRenames = (
+  renames: [string, string][],
+  path: string
+) => {
+  return unique([
+    ...getValidForwardRenames(renames, path),
+    ...getValidBackwardRenames(renames, path),
+  ]);
 };
 
 const add = <
@@ -66,7 +86,7 @@ const add = <
     up,
     // @ts-ignore
     isValid: ({ input, renames }) => {
-      return getValidRenames(renames, path).some((path) => {
+      return getAllValidRenames(renames, path).some((path) => {
         // @ts-ignore
         return isValid(input?.[path], schema);
       });
@@ -109,7 +129,7 @@ const addNestedArray = <
     up,
     // @ts-ignore
     isValid: ({ input, renames }) => {
-      return getValidRenames(renames, path).some((rename) => {
+      return getAllValidRenames(renames, path).some((rename) => {
         const atPath = (input as any)[rename];
         if (Array.isArray(atPath)) {
           if (atPath.length === 0) return true;
@@ -190,7 +210,10 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
   return {
     up,
     tag: "removeOne",
-    isValid: ({ input }) => !(path in input),
+    isValid: ({ input, renames }) =>
+      getAllValidRenames(renames, path.toString()).every(
+        (path) => !(path in input)
+      ),
     rewritePaths: (input) =>
       input.filter((pathInEvolver) => pathInEvolver.path !== path),
     beforeMutate: ({ paths }) => {
@@ -199,10 +222,11 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
       }
     },
     rewriteRenames: ({ renames }) => {
-      const relatedRenames = getValidRenames(renames, path as string);
-      return renames.filter(
-        ([renameKey]) => !relatedRenames.includes(renameKey)
-      );
+      // const relatedRenames = getAllValidRenames(renames, path as string);
+      // return renames.filter(
+      //   ([renameKey]) => !relatedRenames.includes(renameKey)
+      // );
+      return renames;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
@@ -217,13 +241,31 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
   return {
     tag: "removeMany",
     up,
-    isValid: () => false,
+    isValid: ({ input, paths: _currentlyRegisteredPaths, renames }) => {
+      return paths.every((path) => {
+        return getAllValidRenames(renames, path.toString()).every(
+          (path) => !(path in input)
+        );
+      });
+    },
     beforeMutate: () => {
       // do nothing, inputs parsed in typesystem
     },
     rewritePaths: (paths) =>
       paths.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
-    rewriteRenames: defaultRewriteRenames,
+
+    rewriteRenames: ({ renames }) => {
+      // const allValidRenames = paths
+      //   .map((path) => getAllValidRenames(renames, path.toString()))
+      //   .flat();
+
+      // return renames.filter((rename) => {
+      //   return !allValidRenames.some(
+      //     (validRename) => rename[0] === validRename
+      //   );
+      // });
+      return renames;
+    },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
@@ -248,8 +290,16 @@ const rename = <
     up,
     tag: "rename",
     // @ts-ignore
-    isValid: ({ input }) => {
-      return destination in input;
+    // Todo: Add full PathData shape to isValid rather than just a string array
+    // Technically here we should be validating that the schema is the same
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isValid: ({ input, paths, renames }) => {
+      const forwardRenames = getValidForwardRenames(
+        renames,
+        destination
+      ).filter((rename) => rename !== source);
+
+      return forwardRenames.some((rename) => rename in input);
     },
     beforeMutate: ({ paths }) => {
       if (paths.some((pathData) => pathData.path === destination)) {
@@ -307,7 +357,7 @@ const addMany = <
 
       return entries.every((entry) => {
         const schemaAtEntry = schema.shape[entry[0]];
-        return getValidRenames(renames, entry[0]).some((rename) => {
+        return getAllValidRenames(renames, entry[0]).some((rename) => {
           const key = rename;
           // @ts-ignore
           return schemaAtEntry?.safeParse(input?.[key]).success;
@@ -369,12 +419,21 @@ const renameMany = <
         );
       });
     },
-    beforeMutate: () => {
-      if (unique(Object.values(rename)).length > Object.values(rename).length) {
+    beforeMutate: ({ paths }) => {
+      const destinationKeys = Object.values(renames);
+
+      if (unique(destinationKeys).length > destinationKeys.length) {
         throw new Error("Cannot do multiple renames to the same value");
       }
-      Object.values(rename).forEach((destinationKey) => {
-        Object.keys(rename).forEach((sourceKey) => {
+
+      Object.entries(renames).forEach(([sourceKey, destinationKey]) => {
+        return paths.forEach((path) => {
+          if (path.path === destinationKey) {
+            throw new Error(
+              `Cannot set destination '${destinationKey}' because it already is registered in your paths`
+            );
+          }
+
           if (sourceKey === destinationKey) {
             throw new Error(
               `Cannot set source ${sourceKey} to destination ${destinationKey} in one migration`
@@ -382,7 +441,6 @@ const renameMany = <
           }
         });
       });
-      // Do nothing, should be accounted for
     },
     rewritePaths: (paths) => {
       const keys = Object.keys(renames) as (keyof typeof renames)[];

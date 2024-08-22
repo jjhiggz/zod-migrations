@@ -19,7 +19,7 @@ export type Mutator<Shape, ReturnShape> = {
     renames,
     paths,
   }: {
-    input: Shape;
+    input: any;
     renames: [string, string][];
     paths: string[];
   }) => boolean;

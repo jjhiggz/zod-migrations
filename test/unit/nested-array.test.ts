@@ -1,8 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { mutators, schemaEvolutionCountTag } from "../../src";
 import { z } from "zod";
 import { createZodMigrations } from "../../src/zod-migration";
+
+const dummyNestedMigrator = createZodMigrations({
+  endingSchema: z.object({
+    name: z.string(),
+    age: z.number(),
+  }),
+  startingSchema: z.object({}),
+}).addMany({
+  defaultValues: {
+    age: 0,
+    name: "",
+  },
+  schema: z.object({
+    name: z.string(),
+    age: z.number(),
+  }),
+});
+
+const dummyMutator = mutators.addNestedArray({
+  currentSchema: z.object({
+    name: z.string(),
+    age: z.number(),
+  }),
+  nestedMigrator: dummyNestedMigrator,
+  path: "nested",
+});
 
 describe("mutator.up", () => {
   it("should work base case", () => {
@@ -99,17 +129,82 @@ describe("mutator.isValid", () => {
   });
 });
 
-describe.skip("mutator.rewritePaths", () => {
-  //TODO
+describe("mutator.rewritePaths", () => {
+  it("should add the path to the array", () => {
+    const result = mutators.addNestedArray({
+      currentSchema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+      nestedMigrator: dummyNestedMigrator,
+      path: "nested",
+    });
+
+    assertPathsEqual(
+      result.rewritePaths([
+        { path: "name", schema: z.string() },
+        { path: "age", schema: z.number() },
+      ]),
+      [
+        { path: "name", schema: z.string() },
+        { path: "age", schema: z.number() },
+        {
+          path: "nested",
+          schema: z.object({
+            name: z.string(),
+            age: z.number(),
+          }),
+        },
+      ]
+    );
+  });
 });
 
-describe.skip("mutator.rewriteRenames", () => {
-  // TODO
+describe("mutator.rewriteRenames", () => {
+  it("shouldn't rewrite renames", () => {
+    const result = mutators
+      .addNestedArray({
+        currentSchema: z.object({
+          name: z.string(),
+          age: z.number(),
+        }),
+        nestedMigrator: dummyNestedMigrator,
+        path: "nested",
+      })
+      .rewriteRenames({
+        renames: [],
+      });
+    expect(result).toEqual([]);
+  });
 });
 
-describe.skip("beforeMutate", () => {
-  it("should throw an error for name conflict", () => {
-    // TODO
+describe("beforeMutate", () => {
+  it("should throw an error for name conflict", async () => {
+    const result = await Promise.resolve()
+      .then(() => {
+        dummyMutator.beforeMutate({
+          paths: [
+            {
+              path: "name",
+              nestedMigrator: dummyNestedMigrator,
+              schema: z.string(),
+            },
+            {
+              path: "age",
+              nestedMigrator: dummyNestedMigrator,
+              schema: z.number(),
+            },
+            {
+              path: "nested",
+              nestedMigrator: dummyNestedMigrator,
+              schema: z.object({ name: z.string(), age: z.number() }),
+            },
+          ],
+        });
+      })
+      .catch((e) => e);
+
+    expect(result).toBeInstanceOf(Error);
   });
 });
 

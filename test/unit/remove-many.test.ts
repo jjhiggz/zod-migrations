@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createTestMigrator, testBasePersonSchema } from "../utils";
+import {
+  assertPathsEqual,
+  createTestMigrator,
+  testBasePersonSchema,
+} from "../utils";
 import { z } from "zod";
 import { mutators } from "../../src";
 
@@ -25,22 +29,83 @@ describe("mutator.up", () => {
   });
 });
 
-describe.skip("mutator.isValid", () => {
-  // TODO
+describe("mutator.isValid", () => {
+  const isValid = mutators.removeMany<
+    {
+      name: string;
+      age: number;
+      other: string;
+    },
+    "name" | "age"
+  >(["name", "age"]).isValid;
+
+  it("Should be valid if removed fields do not exist", () => {
+    expect(
+      isValid({
+        input: { other: "other value" },
+        paths: ["other"],
+        renames: [],
+      })
+    ).toBe(true);
+  });
+
+  /* TODO: 
+  Do I actually want this? So isValid is designed to take an input
+  and help it determine where in the chain it first becomes invalid.
+  My worry about this is if we say it's invalid, before it is invalid,
+  then we are going to skip vital transformations
+  */
+  it("Should be valid if removed fields do not exist", () => {
+    expect(
+      isValid({
+        input: { other: "other value", newName: "Jimmy" },
+        paths: ["other"],
+        renames: [["name", "newName"]],
+      })
+    ).toBe(false);
+  });
 });
 
-describe.skip("mutator.rewritePaths", () => {
-  // TODO
+describe("mutator.rewritePaths", () => {
+  const rewritePaths = mutators.removeMany<
+    {
+      name: string;
+      age: number;
+      dummy: string;
+    },
+    "name" | "age"
+  >(["name", "age"]).rewritePaths;
+
+  it("should remove all keys from paths", () => {
+    assertPathsEqual(rewritePaths([{ path: "dummy", schema: z.number() }]), []);
+  });
 });
 
 describe.skip("mutator.rewriteRenames", () => {
-  // TODO
+  const rewriteRenames = mutators.removeMany<
+    { name: string; age: number; other: string },
+    "name" | "age"
+  >(["name", "age"] as const).rewriteRenames;
+
+  it("should remove renames that point to the same thing", () => {
+    expect(
+      rewriteRenames({
+        renames: [["oldName", "name"]],
+      })
+    ).toEqual([]);
+  });
+
+  it("shouldn't remove irrelevant renames", () => {
+    expect(
+      rewriteRenames({
+        renames: [
+          ["oldOther", "other"],
+          ["oldName", "name"],
+          ["oldAge", "age"],
+        ],
+      })
+    ).toEqual([["oldOther", "other"]]);
+  });
 });
 
-describe.skip("mutator.rewriteRenames", () => {
-  // TODO
-});
-
-describe.skip("mutator.beforeMutate", () => {
-  // TODO
-});
+describe("mutator.beforeMutate", () => {});

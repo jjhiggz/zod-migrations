@@ -10,7 +10,7 @@ import type {
   ZodMigratorStartShape,
   ZShape,
 } from "./types/types";
-import { getValidRenames, mutators } from "./mutators";
+import { getAllValidRenames, mutators } from "./mutators";
 import type { ObjectWith } from "./types/ObjectWith";
 import type { Merge } from "type-fest";
 import { omit } from "remeda";
@@ -370,7 +370,7 @@ export class ZodMigrations<
     );
 
     mutatorsWithNestedMigrators.forEach((mutator) => {
-      const renames = getValidRenames(
+      const renames = getAllValidRenames(
         this.renames,
         mutator.nestedMigrator!.path
       );
