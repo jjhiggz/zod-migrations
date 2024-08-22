@@ -64,7 +64,7 @@ describe("mutator.up", () => {
 });
 
 describe("mutator.isValid", () => {
-  it("isValid should succeed if path is there", () => {
+  it("isValid should succeed if value found at path is valid according to current value", () => {
     const nestedMigrator = createTestMigrator({
       endingSchema: testBasePersonSchema,
     });
@@ -78,6 +78,34 @@ describe("mutator.isValid", () => {
       .isValid({
         input: {
           nested: [],
+        },
+        paths: [],
+        renames: [],
+      });
+
+    expect(valid).toBe(true);
+  });
+
+  it("isValid should succeed if nested path TRANSFORMS to correct value", () => {
+    const extendedSchema = testBasePersonSchema
+      .omit({ name: true })
+      .merge(z.object({ firstName: z.string() }));
+    const nestedMigrator = createTestMigrator({
+      endingSchema: extendedSchema,
+    }).rename({
+      source: "name",
+      destination: "firstName",
+    });
+
+    const valid = mutators
+      .addNestedArray({
+        nestedMigrator,
+        path: "nested",
+        currentSchema: extendedSchema,
+      })
+      .isValid({
+        input: {
+          nested: [{ name: "jon", age: 1 }],
         },
         paths: [],
         renames: [],

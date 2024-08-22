@@ -168,7 +168,6 @@ const testCases = [
     } satisfies SectionGroupV4,
   },
   {
-    tag: "fuck",
     input: {
       id: "1",
       name: "sg-1",
@@ -250,11 +249,93 @@ const testCases = [
       ] satisfies SectionV4[],
     } satisfies SectionGroupV4,
   },
+  {
+    input: {
+      id: "1",
+      name: "sg-1",
+      sectionHeaderFontFamily: "Arial",
+      sectionHeaderFontSize: 13,
+      sections: [
+        {
+          id: "1",
+          name: "s-1",
+          type: "SECTION",
+          sectionHeaderFontFamily: "Arial",
+          sectionHeaderFontSize: 13,
+          items: [
+            {
+              id: "1",
+              name: "i-1",
+              type: "ITEM",
+              itemDescriptionFontFamily: "Arial",
+              itemDescriptionFontSize: 13,
+            },
+            {
+              id: "1",
+              name: "i-1",
+              type: "ITEM",
+              itemDescriptionFontFamily: "Arial",
+              itemDescriptionFontSize: 14,
+            },
+          ],
+        },
+        {
+          id: "1",
+          name: "s-1",
+          sectionHeaderFontFamily: "Times",
+          sectionHeaderFontSize: 14,
+          items: [],
+          type: "SECTION",
+        },
+      ],
+      type: "SECTION_GROUP",
+    } satisfies SectionGroupV4,
+    output: {
+      id: "1",
+      name: "sg-1",
+      type: "SECTION_GROUP",
+      sectionHeaderFontFamily: "Arial",
+      sectionHeaderFontSize: 13,
+      sections: [
+        {
+          id: "1",
+          name: "s-1",
+          sectionHeaderFontFamily: "Arial",
+          sectionHeaderFontSize: 13,
+          items: [
+            {
+              id: "1",
+              name: "i-1",
+              type: "ITEM",
+              itemDescriptionFontFamily: "Arial",
+              itemDescriptionFontSize: 13,
+            },
+            {
+              id: "1",
+              name: "i-1",
+              type: "ITEM",
+              itemDescriptionFontFamily: "Arial",
+              itemDescriptionFontSize: 14,
+            },
+          ] satisfies ItemV3[],
+          type: "SECTION",
+        },
+        {
+          id: "1",
+          name: "s-1",
+          sectionHeaderFontFamily: "Times",
+          sectionHeaderFontSize: 14,
+          items: [] satisfies ItemV3[],
+          type: "SECTION",
+        },
+      ] satisfies SectionV4[],
+    } satisfies SectionGroupV4,
+  },
 ];
 
 describe("run", () => {
   it("should pass all test cases", () => {
-    const selectedTag = "fuck";
+    const selectedTag = false;
     const filteredTestCases = testCases.filter((testCase) => {
       if (selectedTag) {
         return testCase.tag === selectedTag;

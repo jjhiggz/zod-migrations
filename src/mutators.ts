@@ -188,7 +188,14 @@ const addNestedPath = <
     tag: "addNested",
     up,
     // @ts-ignore
-    isValid: ({ input }) => isValid(input?.[path], currentSchema),
+    isValid: ({ input }) => {
+      try {
+        return isValid(nestedMigrator.transform(input?.[path]), currentSchema);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        return false;
+      }
+    },
     rewritePaths: (input) => [
       ...input,
       { path, schema: currentSchema, nestedMigrator },
