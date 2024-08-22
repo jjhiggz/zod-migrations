@@ -323,17 +323,11 @@ export class ZodMigrations<
       if (schemaEvolutionCount) return 0;
 
       return this.mutators.findIndex((mutator) => {
-        if (mutator.nestedMigrator) {
-          return !mutator.nestedMigrator.migrator
-            .__get_private_data()
-            .endingSchema.safeParse(input).success;
-        } else {
-          return !mutator.isValid({
-            input,
-            paths: this.paths.map((path) => path.path),
-            renames: this.renames,
-          });
-        }
+        return !mutator.isValid({
+          input,
+          paths: this.paths.map((path) => path.path),
+          renames: this.renames,
+        });
       });
     })();
 
@@ -346,15 +340,22 @@ export class ZodMigrations<
           }
           return index >= schemaEvolutionCount;
         })
-      : this.mutators.slice(firstInvalidMutationIndex);
+      : this.mutators.filter((mutator, index) => {
+          if (mutator.nestedMigrator) return true;
+          return index >= firstInvalidMutationIndex;
+        });
 
     for (const mutator of mutators) {
+      // if (input?.type === "SECTION_GROUP")
+      // console.log({ before: input, mutator: mutator.tag });
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
       input = mutator.up({
         input,
         renames: this.renames,
         paths: this.paths.map((path) => path.path),
       });
+      // if (input?.type === "SECTION_GROUP")
+      // console.log({ after: input, mutator: mutator.tag });
     }
 
     return input;

@@ -133,8 +133,14 @@ const addNestedArray = <
         const atPath = (input as any)[rename];
         if (Array.isArray(atPath)) {
           if (atPath.length === 0) return true;
-          // @ts-ignore
-          return atPath.every((val) => isValid(val, schema));
+          return atPath.every((val) => {
+            try {
+              // @ts-ignore
+              return isValid(nestedMigrator.transform(val), schema);
+            } catch (_e) {
+              return false;
+            }
+          });
         } else {
           return false;
         }
@@ -241,6 +247,7 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
   return {
     tag: "removeMany",
     up,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     isValid: ({ input, paths: _currentlyRegisteredPaths, renames }) => {
       return paths.every((path) => {
         return getAllValidRenames(renames, path.toString()).every(

@@ -108,4 +108,6 @@ describe.skip("mutator.rewriteRenames", () => {
   });
 });
 
-describe("mutator.beforeMutate", () => {});
+describe.skip("mutator.beforeMutate", () => {
+  // TODO
+});
