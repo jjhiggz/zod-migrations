@@ -18,7 +18,7 @@ describe("mutate.up", () => {
         path: "cheese",
         schema: z.string(),
       })
-      .mutate(() => mutators.removeOne("cheese"));
+      .register(() => mutators.removeOne("cheese"));
 
     expect(evolver.transform({})).toEqual({
       name: "",

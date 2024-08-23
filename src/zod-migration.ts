@@ -132,9 +132,10 @@ export class ZodMigrations<
     CurrentShape & ObjectWith<Path, z.infer<S>>,
     EndingShape
   > => {
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() =>
-      // @ts-ignore
-      mutators.add({ path, schema, defaultVal })
+    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      () =>
+        // @ts-ignore
+        mutators.add({ path, schema, defaultVal })
     );
   };
 
@@ -157,14 +158,16 @@ export class ZodMigrations<
     nestedMigrator: Migrator;
   }) => {
     // @ts-ignore
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      return mutators.addNestedPath({
-        path,
-        currentSchema,
-        defaultStartingVal: defaultStartingVal,
-        nestedMigrator,
-      });
-    });
+    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      () => {
+        return mutators.addNestedPath({
+          path,
+          currentSchema,
+          defaultStartingVal: defaultStartingVal,
+          nestedMigrator,
+        });
+      }
+    );
   };
 
   /**
@@ -184,13 +187,15 @@ export class ZodMigrations<
     nestedMigrator: Migrator;
   }) => {
     // @ts-ignore
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      return mutators.addNestedArray({
-        path,
-        currentSchema: schema,
-        nestedMigrator,
-      });
-    });
+    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      () => {
+        return mutators.addNestedArray({
+          path,
+          currentSchema: schema,
+          nestedMigrator,
+        });
+      }
+    );
   };
 
   /**
@@ -214,7 +219,7 @@ export class ZodMigrations<
     schema: Schema;
     defaultValues: z.infer<Schema>;
   }) => {
-    return this.mutate<Merge<CurrentShape, z.infer<Schema>>>(() =>
+    return this.registerMutator<Merge<CurrentShape, z.infer<Schema>>>(() =>
       // @ts-ignore
       mutators.addMany({ defaultValues, schema })
     );
@@ -233,9 +238,9 @@ export class ZodMigrations<
     source: SourceKey;
     destination: DestinationKey;
   }) => {
-    return this.mutate<RenameOutput<CurrentShape, SourceKey, DestinationKey>>(
-      () => mutators.rename(source, destination)
-    );
+    return this.registerMutator<
+      RenameOutput<CurrentShape, SourceKey, DestinationKey>
+    >(() => mutators.rename(source, destination));
   };
 
   consolidate = <T extends CurrentShape>() => {
@@ -252,7 +257,7 @@ export class ZodMigrations<
   >(
     renames: Renames
   ) => {
-    return this.mutate<RenameManyReturn<CurrentShape, Renames>>(() =>
+    return this.registerMutator<RenameManyReturn<CurrentShape, Renames>>(() =>
       mutators.renameMany<CurrentShape, Renames>({ renames })
     );
   };
@@ -261,7 +266,7 @@ export class ZodMigrations<
    * Removes a key from your schema
    */
   remove = <SourceKey extends keyof CurrentShape>(source: SourceKey) => {
-    return this.mutate(() => mutators.removeOne(source));
+    return this.registerMutator(() => mutators.removeOne(source));
   };
 
   /**
@@ -270,12 +275,12 @@ export class ZodMigrations<
   removeMany = <SourceKey extends keyof CurrentShape>(
     paths: Readonly<SourceKey[]>
   ) => {
-    return this.mutate(() =>
+    return this.registerMutator(() =>
       mutators.removeMany<CurrentShape, (typeof paths)[number]>(paths)
     );
   };
 
-  mutate = <T extends FillableObject>(
+  registerMutator = <T extends FillableObject>(
     createMutator: (_input: CurrentShape) => Mutator<CurrentShape, T>
   ) => {
     const mutator = createMutator(undefined as any as CurrentShape);
