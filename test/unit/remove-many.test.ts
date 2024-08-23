@@ -20,7 +20,7 @@ describe("mutator.up", () => {
         path: "pizza",
         schema: z.string(),
       })
-      .register(() => mutators.removeMany(["cheese", "pizza"]));
+      .registerMutator(() => mutators.removeMany(["cheese", "pizza"]));
 
     expect(evolver.transform({})).toEqual({
       name: "",

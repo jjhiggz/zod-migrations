@@ -22,7 +22,7 @@ describe("mutator.up", () => {
         path: "cheese",
         schema: z.string(),
       })
-      .register(() => mutators.rename("cheese", "pizza"));
+      .registerMutator(() => mutators.rename("cheese", "pizza"));
 
     expect(evolver.transform({})).toEqual({
       name: "",

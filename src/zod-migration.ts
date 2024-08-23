@@ -157,8 +157,8 @@ export class ZodMigrations<
     currentSchema: S;
     nestedMigrator: Migrator;
   }) => {
-    // @ts-ignore
     return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      // @ts-ignore
       () => {
         return mutators.addNestedPath({
           path,
@@ -186,8 +186,10 @@ export class ZodMigrations<
     schema: Schema;
     nestedMigrator: Migrator;
   }) => {
-    // @ts-ignore
-    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+    return this.registerMutator<
+      CurrentShape & ObjectWith<Path, z.infer<Schema>>
+    >(
+      // @ts-ignore
       () => {
         return mutators.addNestedArray({
           path,

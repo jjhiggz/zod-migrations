@@ -28,7 +28,7 @@ describe("mutator.up", () => {
         defaultVal: "",
         schema: z.string(),
       })
-      .register((shape) => {
+      .registerMutator((shape) => {
         const renames: Partial<Record<keyof typeof shape, string>> = {
           age: "newAge",
           name: "newName",

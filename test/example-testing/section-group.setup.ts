@@ -9,6 +9,7 @@ import {
   SectionV2,
   SectionV3,
   SectionV4,
+  SectionWithChildren,
 } from "./section.setup";
 
 export const initialSectionGroupSchema = z.object({
@@ -43,6 +44,9 @@ export type SectionGroupV3 = Simplify<
 >;
 
 export type SectionGroupV4 = z.infer<typeof sectionGroupSchemaV4>;
+export type SectionGroupWithChildren = SectionGroupV4 & {
+  sections: SectionWithChildren[];
+};
 
 export const sectionGroupSchemaV3 = sectionGroupSchemaV2.merge(
   z.object({

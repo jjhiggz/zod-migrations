@@ -9,7 +9,9 @@ import {
   SectionGroupV2,
   SectionGroupV3,
   SectionGroupV4,
+  SectionGroupWithChildren,
 } from "./section-group.setup";
+import { Equals } from "../../src/types/Equals";
 
 export const initialMenuSchema = z.object({
   id: z.string(),
@@ -91,6 +93,55 @@ export const menuMigrator = createZodMigrations({
     subheaderFontFamily: "sectionHeaderFontFamily",
     subheaderFontSize: "sectionHeaderFontSize",
   } as const);
+
+const safeSchema = menuMigrator.safeSchema();
+
+type InferredMenuWithChildren = z.infer<typeof safeSchema>;
+type CorrectMenuWithChildren = MenuV4 & {
+  sectionGroups: SectionGroupWithChildren[];
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isValidSchemaInference(): 1 {
+  return 1 as Equals<InferredMenuWithChildren, CorrectMenuWithChildren>;
+}
+
+// Can I create an instance of the correct inferred type
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const menu: InferredMenuWithChildren = {
+  id: "",
+  name: "",
+  sectionHeaderFontFamily: "",
+  sectionHeaderFontSize: 1,
+  type: "MENU",
+  sectionGroups: [
+    {
+      id: "",
+      name: "",
+      sectionHeaderFontFamily: "",
+      sectionHeaderFontSize: 10,
+      type: "SECTION_GROUP",
+      sections: [
+        {
+          id: "",
+          name: "",
+          sectionHeaderFontFamily: "",
+          sectionHeaderFontSize: 0,
+          type: "SECTION",
+          items: [
+            {
+              id: "",
+              itemDescriptionFontFamily: "",
+              itemDescriptionFontSize: 12,
+              name: "",
+              type: "ITEM",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function isValid(): true {

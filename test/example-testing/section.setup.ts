@@ -41,6 +41,9 @@ export type SectionV3 = Simplify<
 >;
 
 export type SectionV4 = z.infer<typeof sectionSchemaV4>;
+export type SectionWithChildren = SectionV4 & {
+  items: ItemV3[];
+};
 
 export const sectionSchemaV3 = sectionSchemaV2.merge(
   z.object({
