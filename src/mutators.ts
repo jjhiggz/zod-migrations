@@ -133,8 +133,15 @@ const addNestedArray = <
         const atPath = (input as any)[rename];
         if (Array.isArray(atPath)) {
           if (atPath.length === 0) return true;
-          // @ts-ignore
-          return atPath.every((val) => isValid(val, schema));
+          return atPath.every((val) => {
+            try {
+              // @ts-ignore
+              return isValid(nestedMigrator.transform(val), schema);
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (_e) {
+              return false;
+            }
+          });
         } else {
           return false;
         }
@@ -182,7 +189,14 @@ const addNestedPath = <
     tag: "addNested",
     up,
     // @ts-ignore
-    isValid: ({ input }) => isValid(input?.[path], currentSchema),
+    isValid: ({ input }) => {
+      try {
+        return isValid(nestedMigrator.transform(input?.[path]), currentSchema);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        return false;
+      }
+    },
     rewritePaths: (input) => [
       ...input,
       { path, schema: currentSchema, nestedMigrator },
@@ -222,10 +236,6 @@ const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
       }
     },
     rewriteRenames: ({ renames }) => {
-      // const relatedRenames = getAllValidRenames(renames, path as string);
-      // return renames.filter(
-      //   ([renameKey]) => !relatedRenames.includes(renameKey)
-      // );
       return renames;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
@@ -241,6 +251,7 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
   return {
     tag: "removeMany",
     up,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     isValid: ({ input, paths: _currentlyRegisteredPaths, renames }) => {
       return paths.every((path) => {
         return getAllValidRenames(renames, path.toString()).every(
@@ -255,15 +266,6 @@ const removeMany = <Shape extends FillableObject, K extends keyof Shape>(
       paths.filter((pathInEvolver) => !paths.includes(pathInEvolver as any)),
 
     rewriteRenames: ({ renames }) => {
-      // const allValidRenames = paths
-      //   .map((path) => getAllValidRenames(renames, path.toString()))
-      //   .flat();
-
-      // return renames.filter((rename) => {
-      //   return !allValidRenames.some(
-      //     (validRename) => rename[0] === validRename
-      //   );
-      // });
       return renames;
     },
   } satisfies Mutator<Shape, ReturnType<typeof up>>;

@@ -2,7 +2,7 @@
 import type { ZodMigrations } from "../zod-migration";
 import { ZodObject, ZodSchema } from "zod";
 import { Equals } from "./Equals";
-import { Merge, Simplify } from "type-fest";
+import { Merge, Simplify, Writable } from "type-fest";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type FillableObject = Merge<{}, {}>;
@@ -58,8 +58,8 @@ export type ZodMigratorStartShape<T extends ZodMigrations<any, any, any>> =
   Simplify<ReturnType<T["__get_start_shape"]>>;
 
 export type IsZodMigratorValid<T extends ZodMigrations<any, any, any>> = Equals<
-  ZodMigratorCurrentShape<T>,
-  ZodMigratorEndShape<T>
+  Simplify<Writable<ZodMigratorCurrentShape<T>>>,
+  Simplify<Writable<ZodMigratorEndShape<T>>>
 > extends 1
   ? true
   : false;

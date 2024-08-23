@@ -18,7 +18,7 @@ describe("mutate.up", () => {
         path: "cheese",
         schema: z.string(),
       })
-      .mutate(() => mutators.removeOne("cheese"));
+      .registerMutator(() => mutators.removeOne("cheese"));
 
     expect(evolver.transform({})).toEqual({
       name: "",
@@ -85,9 +85,8 @@ describe("mutate.rewritePaths", () => {
   });
 });
 
-// TODO: Investigate if this is a good idea
-describe.skip("mutate.rewriteRenames", () => {
-  it("should remove renames if points to the field that is renamed", () => {
+describe("mutate.rewriteRenames", () => {
+  it("should  not remove renames if points to the field that is renamed", () => {
     const rewriteRenames = mutators.removeOne<
       { name: string; age: number },
       "name"
@@ -103,6 +102,8 @@ describe.skip("mutate.rewriteRenames", () => {
     });
     expect(result).toEqual([
       ["a", "b"],
+      ["startName", "firstName"],
+      ["firstName", "name"],
       ["c", "d"],
     ]);
   });

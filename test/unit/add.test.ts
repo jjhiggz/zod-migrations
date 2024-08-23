@@ -32,7 +32,7 @@ describe("mutator.up", () => {
           cheese: z.string(),
         })
       ),
-    }).mutate(() =>
+    }).registerMutator(() =>
       mutators.add({
         defaultVal: "swiss",
         path: "cheese",

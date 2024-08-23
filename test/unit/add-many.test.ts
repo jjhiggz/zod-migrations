@@ -269,7 +269,7 @@ describe("full transform tests", () => {
       endingSchema: testBasePersonSchema.merge(
         z.object({ cheese: z.string(), poop: z.string() })
       ),
-    }).mutate(() =>
+    }).registerMutator(() =>
       mutators.addMany({
         defaultValues: {
           cheese: "",

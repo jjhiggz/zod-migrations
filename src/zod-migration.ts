@@ -132,9 +132,10 @@ export class ZodMigrations<
     CurrentShape & ObjectWith<Path, z.infer<S>>,
     EndingShape
   > => {
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() =>
-      // @ts-ignore
-      mutators.add({ path, schema, defaultVal })
+    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      () =>
+        // @ts-ignore
+        mutators.add({ path, schema, defaultVal })
     );
   };
 
@@ -156,15 +157,17 @@ export class ZodMigrations<
     currentSchema: S;
     nestedMigrator: Migrator;
   }) => {
-    // @ts-ignore
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      return mutators.addNestedPath({
-        path,
-        currentSchema,
-        defaultStartingVal: defaultStartingVal,
-        nestedMigrator,
-      });
-    });
+    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+      // @ts-ignore
+      () => {
+        return mutators.addNestedPath({
+          path,
+          currentSchema,
+          defaultStartingVal: defaultStartingVal,
+          nestedMigrator,
+        });
+      }
+    );
   };
 
   /**
@@ -183,14 +186,18 @@ export class ZodMigrations<
     schema: Schema;
     nestedMigrator: Migrator;
   }) => {
-    // @ts-ignore
-    return this.mutate<CurrentShape & ObjectWith<Path, z.infer<S>>>(() => {
-      return mutators.addNestedArray({
-        path,
-        currentSchema: schema,
-        nestedMigrator,
-      });
-    });
+    return this.registerMutator<
+      CurrentShape & ObjectWith<Path, z.infer<Schema>[]>
+    >(
+      // @ts-ignore
+      () => {
+        return mutators.addNestedArray({
+          path,
+          currentSchema: schema,
+          nestedMigrator,
+        });
+      }
+    );
   };
 
   /**
@@ -214,7 +221,7 @@ export class ZodMigrations<
     schema: Schema;
     defaultValues: z.infer<Schema>;
   }) => {
-    return this.mutate<Merge<CurrentShape, z.infer<Schema>>>(() =>
+    return this.registerMutator<Merge<CurrentShape, z.infer<Schema>>>(() =>
       // @ts-ignore
       mutators.addMany({ defaultValues, schema })
     );
@@ -233,9 +240,9 @@ export class ZodMigrations<
     source: SourceKey;
     destination: DestinationKey;
   }) => {
-    return this.mutate<RenameOutput<CurrentShape, SourceKey, DestinationKey>>(
-      () => mutators.rename(source, destination)
-    );
+    return this.registerMutator<
+      RenameOutput<CurrentShape, SourceKey, DestinationKey>
+    >(() => mutators.rename(source, destination));
   };
 
   consolidate = <T extends CurrentShape>() => {
@@ -252,7 +259,7 @@ export class ZodMigrations<
   >(
     renames: Renames
   ) => {
-    return this.mutate<RenameManyReturn<CurrentShape, Renames>>(() =>
+    return this.registerMutator<RenameManyReturn<CurrentShape, Renames>>(() =>
       mutators.renameMany<CurrentShape, Renames>({ renames })
     );
   };
@@ -261,7 +268,7 @@ export class ZodMigrations<
    * Removes a key from your schema
    */
   remove = <SourceKey extends keyof CurrentShape>(source: SourceKey) => {
-    return this.mutate(() => mutators.removeOne(source));
+    return this.registerMutator(() => mutators.removeOne(source));
   };
 
   /**
@@ -270,12 +277,12 @@ export class ZodMigrations<
   removeMany = <SourceKey extends keyof CurrentShape>(
     paths: Readonly<SourceKey[]>
   ) => {
-    return this.mutate(() =>
+    return this.registerMutator(() =>
       mutators.removeMany<CurrentShape, (typeof paths)[number]>(paths)
     );
   };
 
-  mutate = <T extends FillableObject>(
+  registerMutator = <T extends FillableObject>(
     createMutator: (_input: CurrentShape) => Mutator<CurrentShape, T>
   ) => {
     const mutator = createMutator(undefined as any as CurrentShape);
@@ -323,17 +330,11 @@ export class ZodMigrations<
       if (schemaEvolutionCount) return 0;
 
       return this.mutators.findIndex((mutator) => {
-        if (mutator.nestedMigrator) {
-          return !mutator.nestedMigrator.migrator
-            .__get_private_data()
-            .endingSchema.safeParse(input).success;
-        } else {
-          return !mutator.isValid({
-            input,
-            paths: this.paths.map((path) => path.path),
-            renames: this.renames,
-          });
-        }
+        return !mutator.isValid({
+          input,
+          paths: this.paths.map((path) => path.path),
+          renames: this.renames,
+        });
       });
     })();
 
@@ -346,15 +347,22 @@ export class ZodMigrations<
           }
           return index >= schemaEvolutionCount;
         })
-      : this.mutators.slice(firstInvalidMutationIndex);
+      : this.mutators.filter((mutator, index) => {
+          if (mutator.nestedMigrator) return true;
+          return index >= firstInvalidMutationIndex;
+        });
 
     for (const mutator of mutators) {
+      // if (input?.type === "SECTION_GROUP")
+      // console.log({ before: input, mutator: mutator.tag });
       this.transformsAppliedCount = this.transformsAppliedCount + 1;
       input = mutator.up({
         input,
         renames: this.renames,
         paths: this.paths.map((path) => path.path),
       });
+      // if (input?.type === "SECTION_GROUP")
+      // console.log({ after: input, mutator: mutator.tag });
     }
 
     return input;

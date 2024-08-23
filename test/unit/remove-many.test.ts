@@ -20,7 +20,7 @@ describe("mutator.up", () => {
         path: "pizza",
         schema: z.string(),
       })
-      .mutate(() => mutators.removeMany(["cheese", "pizza"]));
+      .registerMutator(() => mutators.removeMany(["cheese", "pizza"]));
 
     expect(evolver.transform({})).toEqual({
       name: "",
@@ -81,31 +81,21 @@ describe("mutator.rewritePaths", () => {
   });
 });
 
-describe.skip("mutator.rewriteRenames", () => {
+describe("mutator.rewriteRenames", () => {
   const rewriteRenames = mutators.removeMany<
     { name: string; age: number; other: string },
     "name" | "age"
   >(["name", "age"] as const).rewriteRenames;
 
-  it("should remove renames that point to the same thing", () => {
+  it("should  notremove renames that point to the same thing", () => {
     expect(
       rewriteRenames({
         renames: [["oldName", "name"]],
       })
-    ).toEqual([]);
-  });
-
-  it("shouldn't remove irrelevant renames", () => {
-    expect(
-      rewriteRenames({
-        renames: [
-          ["oldOther", "other"],
-          ["oldName", "name"],
-          ["oldAge", "age"],
-        ],
-      })
-    ).toEqual([["oldOther", "other"]]);
+    ).toEqual([["oldName", "name"]]);
   });
 });
 
-describe("mutator.beforeMutate", () => {});
+describe.skip("mutator.beforeMutate", () => {
+  // TODO
+});

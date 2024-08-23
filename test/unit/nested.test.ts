@@ -6,6 +6,7 @@ import {
 } from "../utils";
 import { z } from "zod";
 import { mutators } from "../../src";
+import { createZodMigrations } from "../../src/zod-migration";
 
 describe("mutator.up", () => {
   it("should migrate the nested schema in the up function", () => {
@@ -72,33 +73,65 @@ describe("mutator.up", () => {
 });
 
 describe("mutator.isValid", () => {
-  it("isn't valid if the current schema on the nested migrator does not parse", () => {
-    const nestedMigrator = createTestMigrator({
-      endingSchema: z.object({
+  it("IS NOT Valid if the nested value doesn't transform to something that can be parsed by the new schema", () => {
+    const eventualSchema = z.object({
+      firstName: z.string(),
+      age: z.number(),
+    });
+
+    const nestedMigrator = createZodMigrations({
+      endingSchema: eventualSchema,
+      startingSchema: z.object({
         name: z.string(),
         age: z.number(),
       }),
-    });
+    }).rename({ source: "name", destination: "firstName" });
 
-    const mutator = mutators.addNestedPath({
-      currentSchema: testBasePersonSchema,
-      defaultStartingVal: {},
-      nestedMigrator,
-      path: "nested",
-    });
-
-    expect(
-      mutator.isValid({
+    const valid = mutators
+      .addNestedPath({
+        nestedMigrator,
+        path: "nested",
+        currentSchema: eventualSchema,
+        defaultStartingVal: { name: "", age: 1 },
+      })
+      .isValid({
         input: {
-          nested: {
-            name: "",
-            age: "", // should be a number
-          },
+          nested: { age: 1 },
         },
         paths: [],
         renames: [],
+      });
+
+    expect(valid).toBe(false);
+  });
+  it("IS Valid if the nested value transforms to something that can be parsed by the new schema", () => {
+    const extendedSchema = testBasePersonSchema
+      .omit({ name: true })
+      .merge(z.object({ firstName: z.string() }));
+
+    const nestedMigrator = createTestMigrator({
+      endingSchema: extendedSchema,
+    }).rename({
+      source: "name",
+      destination: "firstName",
+    });
+
+    const valid = mutators
+      .addNestedPath({
+        nestedMigrator,
+        path: "nested",
+        currentSchema: extendedSchema,
+        defaultStartingVal: {},
       })
-    ).toEqual(false);
+      .isValid({
+        input: {
+          nested: { name: "jon", age: 1 },
+        },
+        paths: [],
+        renames: [],
+      });
+
+    expect(valid).toBe(true);
   });
 
   it("isvalid if the current schema on the nested migrator does parse", () => {
