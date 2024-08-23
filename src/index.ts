@@ -5,12 +5,27 @@ import {
   testAllVersions,
   versionTag,
 } from "./zod-migration";
+import type {
+  IsZodMigratorValid,
+  ZodMigratorCurrentShape,
+  ZodMigratorEndShape,
+  ZodMigratorStartShape,
+  Mutator,
+} from "./types/types";
 
 import { mutators } from "./mutators";
 
+export type {
+  IsZodMigratorValid,
+  ZodMigratorCurrentShape,
+  ZodMigratorEndShape,
+  ZodMigratorStartShape,
+  Mutator,
+};
+
 export {
   ZodMigrations,
-  createZodMigrations as createJsonEvolver,
+  createZodMigrations,
   schemaEvolutionCountTag,
   testAllVersions,
   versionTag,
