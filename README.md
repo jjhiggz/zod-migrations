@@ -1,6 +1,6 @@
 # Zod Migrations
 
-Zod Migratins is like database migrations but for your zod schemas.
+Zod Migrations is like database migrations but for your zod schemas.
 
 The idea for this library came from [This Article](https://www.inkandswitch.com/cambria/). If you're interested in the differences between this and Cambria, I've written a little bit about that [here](#differences-between-this-and-cambria).
 
@@ -570,3 +570,7 @@ The Cons:
 
 - Although it can track changes to nested objects, my guess is that it's not nearly as smooth
 - Some Schema changes may still result in breaking changes (For example, I haven't tested aggressivly with changing nested schemas)
+
+## Type Instantiation Issues
+
+You may run into type instantiation issues, this is because fluent interfaces are hard to type. If you run into this issue, you can use the `consolidate` method to dump a type in at a moment in the chain. Look in the `instantiation tests` for an example of how to accopmlish this.
