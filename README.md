@@ -570,3 +570,7 @@ The Cons:
 
 - Although it can track changes to nested objects, my guess is that it's not nearly as smooth
 - Some Schema changes may still result in breaking changes (For example, I haven't tested aggressivly with changing nested schemas)
+
+## Type Instantiation Issues
+
+You may run into type instantiation issues, this is because fluent interfaces are hard to type. If you run into this issue, you can use the `consolidate` method to dump a type in at a moment in the chain. Look in the `instantiation tests` for an example of how to accopmlish this.
