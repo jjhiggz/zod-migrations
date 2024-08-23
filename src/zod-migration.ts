@@ -187,7 +187,7 @@ export class ZodMigrations<
     nestedMigrator: Migrator;
   }) => {
     return this.registerMutator<
-      CurrentShape & ObjectWith<Path, z.infer<Schema>>
+      CurrentShape & ObjectWith<Path, z.infer<Schema>[]>
     >(
       // @ts-ignore
       () => {

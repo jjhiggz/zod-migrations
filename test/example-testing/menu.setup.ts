@@ -94,6 +94,7 @@ export const menuMigrator = createZodMigrations({
     subheaderFontSize: "sectionHeaderFontSize",
   } as const);
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const safeSchema = menuMigrator.safeSchema();
 
 type InferredMenuWithChildren = z.infer<typeof safeSchema>;

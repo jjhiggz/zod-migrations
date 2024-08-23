@@ -93,7 +93,5 @@ export const sectionGroupMigrator = createZodMigrations({
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function isValid(): true {
-  //   type InferredFromSchema = z.infer<typeof sectionSchemaV4>;
-  //   type InferredFromMigrator = ZodMigratorEndShape<typeof sectionMigrator>;
   return true as IsZodMigratorValid<typeof sectionGroupMigrator>;
 }
