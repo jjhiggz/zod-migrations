@@ -1,12 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { mutators } from "../../src";
+import { mutators, ZodMigratorCurrentShape } from "../../src";
 import { createZodMigrations } from "../../src/zod-migration";
 import {
   assertPathsEqual,
   createTestMigrator,
   testBasePersonSchema,
 } from "../utils";
+import { Simplify } from "type-fest";
+import { Equals } from "../../src/types/Equals";
 
 describe("mutator.up", () => {
   it("should migrate the nested schema in the up function", () => {
@@ -278,6 +281,81 @@ describe("full transform tests", () => {
         name: "",
         age: 0,
       },
+    });
+  });
+
+  it("should let me use a nullable", () => {
+    const nested = createTestMigrator({
+      endingSchema: z.object({ name: z.string() }),
+    });
+
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema,
+    }).addNested({
+      nestedMigrator: nested,
+      currentSchema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+      defaultStartingVal: {},
+      path: "nested",
+      isNullable: true,
+    });
+
+    function isValidType(): 1 {
+      type CurrentShape = Simplify<ZodMigratorCurrentShape<typeof evolver>>;
+      return 1 as Equals<
+        CurrentShape,
+        {
+          name: string;
+          age: number;
+          nested: {
+            name: string;
+            age: number;
+          } | null;
+        }
+      >;
+    }
+    expect(
+      evolver.transform({
+        name: "",
+        age: 0,
+        nested: null,
+      })
+    ).toEqual({
+      name: "",
+      age: 0,
+      nested: null,
+    });
+  });
+
+  it("should let me use an optional", () => {
+    const nested = createTestMigrator({
+      endingSchema: z.object({ name: z.string() }),
+    });
+
+    const evolver = createTestMigrator({
+      endingSchema: testBasePersonSchema,
+    }).addNested({
+      nestedMigrator: nested,
+      currentSchema: z.object({
+        name: z.string(),
+        age: z.number(),
+      }),
+      defaultStartingVal: {},
+      path: "nested",
+      isOptional: true,
+    });
+
+    expect(
+      evolver.transform({
+        name: "",
+        age: 0,
+      })
+    ).toEqual({
+      name: "",
+      age: 0,
+      nested: undefined,
     });
   });
 
