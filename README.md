@@ -1,6 +1,6 @@
 # Zod Migrations
 
-Zod Migratins is like database migrations but for your zod schemas.
+Zod Migrations is like database migrations but for your zod schemas.
 
 The idea for this library came from [This Article](https://www.inkandswitch.com/cambria/). If you're interested in the differences between this and Cambria, I've written a little bit about that [here](#differences-between-this-and-cambria).
 
@@ -79,7 +79,7 @@ There are other solutions to this problem, that you can look at [here](#other-so
 
 ## How This Library Solves This Problem
 
-This library allows you to define a schema for your JSON data using, and build a transformer for it using a `JsonEvolver` instance. My favorite way of thinking about a `JsonEvolver` instance is that it is like a migration file for your JSON data.
+This library allows you to define a schema for your JSON data using, and build a transformer for it using a `ZodMigrator` instance. My favorite way of thinking about a `ZodMigrator` instance is that it is like a migration file for your JSON data.
 
 Here is an example of how you might use this library to solve the problem above:
 
@@ -109,71 +109,113 @@ const personSchema = z.object({
 });
 ```
 
-But now, alongside each change that we make to our schema, we need to make a corresponding change to our `JsonEvolver` instance.
-
-In our case we...
-
-1. Changed the `name` field to `firstName`
-
-_note: we're doing this as a change and not a drop so we can set the new value for first name to be the old value for name_
-
-2. Added a `lastName` field defaulting to an empty string
-
-3. Added a `phone` field defaulting to an empty string
+Let's change our diction a little bit here and separate person schema into 2 schemas. One for the initial person object, and one for the CURRENT person object.
 
 ```ts
-const personEvolver = new JsonEvolver()
-  // Set Up the Initial Fields
-  .add({
-    path: "name",
-    schema: z.string(),
-    default: "",
-  })
-  .add({
-    path: "age",
-    schema: z.number(),
-    default: 0,
-  })
-  .add({
-    path: "email",
-    schema: z.string(),
-    default: "",
-  })
-  // rename the name field to firstName after our boss asks us to
-  .rename({
-    source: "name",
-    destination: "firstName",
-  })
-  .add({
-    path: "lastName",
-    schema: z.string(),
-    default: "",
-  })
-  .add({
-    path: "phone",
-    schema: z.string(),
-    default: "",
-  });
-```
+const initialPersonSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+  email: z.string(),
+});
 
-### Ok fine, but what it do though?
-
-The purpose of building that `personEvolver` instance is so that you can use a `transform` function to transform your data from one schema to another.
-
-Here is an example of how you might use the `personEvolver` instance to transform a `Person` object from the old schema to the new schema:
-
-```ts
-const personSchema = z.object({
+const currentPersonSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   age: z.number(),
   email: z.string(),
   phone: z.string(),
 });
+```
 
+now we need to build a `ZodMigrator` instance that transforms the `initialPersonSchema` to the `currentPersonSchema`
+
+```ts
+const personMigrator = createZodMigrator({
+  startingSchema: initialPersonSchema,
+  endingSchema: currentPersonSchema,
+});
+```
+
+This is not yet a valid `ZodMigrator` instance, because we haven't told the migrator how to evolve an old shape yet. You can assert this in your typesystem by doing something like this:
+
+```ts
+import { ZodMigratorCurrentShape } from "zod-migrations";
+import { Equals } from "ts-toolbelt"; // or use your type equality checker
+
+type CurrentEvolution = ZodMigratorCurrentShape<typeof personMigrator>;
+type CurrentSchema = ZodMigrationSchema<typeof personMigrator>;
+
+function assertValidMigrator(): 1 {
+  // Should be red if you don't tell your migrator how to evolve an old shape
+  return 1 as Equals<CurrentEvolution, CurrentSchema>;
+}
+```
+
+Or we've also provided a utility that accomplishes this for you
+
+```ts
+import { IsZodMigratorValid } from "zod-migrations";
+
+function assertValidMigrator(): true {
+  return true as IsZodMigratorValid<typeof personMigrator>;
+}
+```
+
+In our case we...
+
+_note: we're doing this as a change and not a drop so we can set the new value for first name to be the old value for name_
+
+1. renamed the `name` field to `firstName`
+
+2. Added a `lastName` field defaulting to an empty string
+
+3. Added a `phone` field defaulting to an empty string
+
+To Evolve our schema we can simply do this:
+
+```ts
+const personMigrator = createZodMigrator({
+  startingSchema: initialPersonSchema,
+  endingSchema: currentPersonSchema,
+})
+  .rename({
+    source: "name",
+    destination: "firstName",
+  })
+  .addMany({
+    defaultValues: {
+      lastName: "",
+      phone: "",
+    },
+    schema: z.object({
+      lastName: z.string(),
+      phone: z.string(),
+    }),
+  });
+```
+
+_note: now you should see your validation function have no static errors_
+
+### Transforming Data
+
+We can now use the `personMigrator` instance to transform our data from any valid old shape to the new shape.
+
+```ts
+personMigrator.transform({
+  name: "Jon",
+  age: 30,
+  email: "jon@jon.com",
+}); // { firstName: "Jon", lastName: "", age: 30, email: "jon@jon.com", phone: "" }
+```
+
+### Making a Version Safe Schema
+
+Manually we can create a version safe schema simply by doing this:
+
+```ts
 const versionSafePersonSchema = z.preprocess(
   // this will take any old version of the person object and transform it to the new version
-  personEvolver.transform,
+  personMigrator.transform,
   personSchema
 );
 ```
@@ -196,16 +238,61 @@ versionSafePersonSchema.parse({
 }); // { firstName: "Jon", lastName: Doe"", age: 30, email: "jon@doe.com", phone: "555-555-5555" }
 ```
 
-## Performance
+For convenience, we can also use the built in `safeSchema` method to do this for us. This method should also return never if the migrator is not valid, meaning that you'll get typesafety here as well. Note: it can be a bit harder to debug the error this way, which is why for now I reccomend using the `IsZodMigratorValid`, `CurrentZodMigratorShape` and `z.infer` utilities.
+
+```ts
+const versionSafePersonSchema = personMigrator.safeSchema();
+```
+
+## Performance Raw
+
+This library works by applying a series of transformation objects that we call `Mutators`, each mutator has some properties that define how it transforms the data. But the long story short is that when you dump an input in to be transformed, we take EACH mutator and figure out:
+
+1. Does this mutator need to be applied to this data? (isValid method)
+2. Does this mutator specify any renames that might affect other mutators? (rewriteRenames method)
+3. How does this mutator affect the paths of the data? (rewritePaths method)
+4. How does this mutator migrate FORWARD? (up method)
+5. Is there any code we need to evaluate before we register the mutator? (beforeMutate method)
+
+When we register the mutators we apply like so:
+
+```ts
+function registerMutator(mutator: Mutator) {
+  mutator.beforeMutate({
+    paths: this.paths,
+  });
+
+  this.paths = mutator.rewritePaths(this.paths);
+  this.renames = mutator.rewriteRenames({ renames: this.renames });
+
+  this.mutators.push(mutator);
+}
+```
+
+Then when we transform the data we do something like this:
+
+```ts
+transform(input){
+  const mutators = this.mutators.filter(getAllInvalidMutators);
+
+  for (let mutator of mutators) {
+    input = mutator.up(input);
+  }
+}
+```
+
+This is a very simple way to do things, and it's not quite optimized for performance. But it's likely that it will be fine for many use cases. If you're a performance junkie, but as you're about to see, if you care about performance, we can gain alot of performance gains by using the stringify method (not stable yet).
+
+## Performance With Stringify
 
 The way that this library works is by applying a series of transformations to the data. If you want you can just apply ALL transformations to every object, it's not optimized but will likely be fine in most cases, but if you're a performance junkie there's a trick we use to speed things up.
 
-The `JsonEvolver` instance has a `stringify` method that tags the data with a version number. This version number is used to determine if the data needs to be transformed. If the version number is the same or higher than the cycle of the transformations, then the data does not need to be transformed.
+The `ZodMigrator` instance has a `stringify` method that tags the data with a version number. This version number is used to determine if the data needs to be transformed. If the version number is the same or higher than the cycle of the transformations, then the data does not need to be transformed.
 
 Under the hood it works like this:
 
 ```ts
-const personEvolver = new JsonEvolver()
+const personMigrator = new ZodMigrator()
   // Set Up the Initial Fields
   .add({
     path: "name",
@@ -241,7 +328,7 @@ const personEvolver = new JsonEvolver()
 When we store our data we can tag it with the version number that we are on. This way we can avoid transforming the data if it is already in the correct format:
 
 ```ts
-await storeJSONData(personEvolver.stringify(data));
+await storeJSONData(personMigrator.stringify(data));
 ```
 
 which will store data something like this
@@ -259,7 +346,7 @@ Then when we retrieve data, we just need to make sure we don't strip out that `_
 
 ```ts
 const versionSafePersonSchema = z.preprocess(
-  personEvolver.transform,
+  personMigrator.transform,
   personSchema.passthrough() // let's other keys in
 );
 ```
@@ -287,10 +374,10 @@ const menuSchema = z.object({
 });
 ```
 
-To account for changes to the `itemSchema` we can use the `register` method to transform the `itemSchema` according to it's own `JsonEvolver` that way these schemas can evolve independently kind of like tables in a database.
+To account for changes to the `itemSchema` we can use the `register` method to transform the `itemSchema` according to it's own `ZodMigrator` that way these schemas can evolve independently kind of like tables in a database.
 
 ```ts
-const itemEvolver = new JsonEvolver()
+const itemEvolver = new ZodMigrator()
   .add({
     path: "id",
     schema: z.string(),
@@ -307,7 +394,7 @@ const itemEvolver = new JsonEvolver()
     defaultVal: 0,
   });
 
-const menuEvolver = new JsonEvolver()
+const menuEvolver = new ZodMigrator()
   .add({
     path: "id",
     schema: z.string(),
@@ -318,12 +405,10 @@ const menuEvolver = new JsonEvolver()
     schema: z.string(),
     defaultVal: "",
   })
-  .add({
+  .addNestedArray({
     path: "items",
     schema: z.array(itemSchema),
-    defaultVal: [],
-  })
-  .register("items", itemEvolver);
+  });
 ```
 
 ## Future Goals
@@ -333,7 +418,10 @@ const menuEvolver = new JsonEvolver()
 should look something like this
 
 ```ts
-const evoSchema = new JSON_EVOLUTION()
+const evoSchema = createZodMigrations({
+  startingSchema,
+  endingSchema,
+})
   .add({
     name: "status",
     schema: z.enum("active", "inactive", "poorly-named"),
@@ -359,41 +447,14 @@ const evoSchema = new JSON_EVOLUTION()
   });
 ```
 
-2. Add splitting transformation
-
-```ts
-const splitter = (firstName) => {
-  const [firstName, lastName] = firstName.split(" ");
-  return {
-    firstName: firstName ?? "",
-    lastName: lastName ?? "",
-  };
-};
-
-const evoSchema = new JSON_EVOLUTION()
-  .add({
-    name: "name",
-    schema: z.string(),
-    default: "",
-  })
-  .split({
-    path: "name",
-    newFieldsSchema: z.object({
-      firstName: z.string(),
-      lastName: z.string(),
-    }),
-    splitBy: splitter,
-  });
-```
-
-3. Backwards Transformations
+2. Backwards Transformations
 
 Right now transforms only go forward, but in theory there's a use case to have backwards transforms as well. In other words, if this is to be used in distributed systems, it's possible that you might want to transform data back to a previous version from a newer version as well.
 
 It may be nice for some folks to have something like this available:
 
 ```ts
-const evoSchema = new JSON_EVOLUTION()
+const evoSchema = createZodMigrations({...})
   .add({
     name: "name",
     schema: z.string(),
@@ -408,7 +469,7 @@ const evoSchema = new JSON_EVOLUTION()
   .upTo(2);
 ```
 
-This would represent the json evolver before age got removed. Then your transformer would take a version 3 object and transform it back to a version 2 object.
+This would represent the Zod Migrator before age got removed. Then your transformer would take a version 3 object and transform it back to a version 2 object.
 
 ```json
 {
@@ -421,9 +482,32 @@ This would represent the json evolver before age got removed. Then your transfor
 }
 ```
 
+This could be super useful in distributed applications where you might want to transform data back to a previous version.
+
+3.  Inline with down migrations, for distributed systems, it might be nice to have a way to publish a string that can build a ZodMigrator. This way you can serve a migrator pattern on an endpoint to keep your servers / clients in sync with each other.
+
+Perhaps a format that looks something like this:
+
+```yaml
+restaurant
+    - add:
+        path: name
+        defaultValue: ""
+        zodType: string
+    - addNestedArray:
+        schema: item
+        path: items
+item
+    - add:
+        path: name
+        defaultValue: ""
+        zodType: string
+
+```
+
 ## Differences Between This and Cambria
 
-Cambria is a library for defining transformations, this is a library for defining transformations. The difference is with JSON Evolver you define your transformations using zod schemas, which is a library for defining schemas. This means that you can use the same schema to validate your data and transform it.
+Cambria is a library for defining transformations, this is a library for defining transformations. The difference is with Zod Migrator you define your transformations using zod schemas, which is a library for defining schemas. This means that you can use the same schema to validate your data and transform it.
 
 This means:
 
@@ -469,14 +553,14 @@ The Cons:
 - Cambria doesn't output a static type
 - Barely anybody uses Cambria (as of writing this, same as my library btw)
 
-## How JSON Evolver Tracks Changes
+## How Zod Migrator Tracks Changes
 
-JSON Evolver uses a much simpler approach to track changes, which is to apply a series of transformations to the data, then run those transformations back and forth to get the final result. But in order to know which changes to skip, it tags the data with a version number.
+Zod Migrator uses a much simpler approach to track changes, which is to apply a series of transformations to the data, then run those transformations back and forth to get the final result. But in order to know which changes to skip, it tags the data with a version number.
 
 The Pros:
 
-- JSON Evolver outputs a static type
-- JSON Evolver may be simpler to understand
+- Zod Migrator outputs a static type
+- Zod Migrator may be simpler to understand
 - The thought process is similar to up/down migrations
 - Allows you to think of nested schemas as objects that evolve independently
 
@@ -486,3 +570,7 @@ The Cons:
 
 - Although it can track changes to nested objects, my guess is that it's not nearly as smooth
 - Some Schema changes may still result in breaking changes (For example, I haven't tested aggressivly with changing nested schemas)
+
+## Type Instantiation Issues
+
+You may run into type instantiation issues, this is because fluent interfaces are hard to type. If you run into this issue, you can use the `consolidate` method to dump a type in at a moment in the chain. Look in the `instantiation tests` for an example of how to accopmlish this.

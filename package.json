@@ -1,6 +1,6 @@
 {
   "name": "zod-migrations",
-  "version": "0.0.2001",
+  "version": "0.1.01",
   "description": "It's like migrations on databases, but for your zod schemas. Now as your types change you will be able to parse any previous version of that type into the newest version",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -24,11 +24,13 @@
   "license": "ISC",
   "scripts": {
     "test": "vitest",
-    "build": "tsup"
+    "build": "tsup",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "eslint": "^9.9.0",
+    "json-diff-ts": "^4.0.1",
     "ts-node": "^10.9.2",
     "ts-toolbelt": "^9.6.0",
     "tsup": "^8.2.4",

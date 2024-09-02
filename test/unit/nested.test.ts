@@ -1,17 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { mutators } from "../../src";
+import { createZodMigrations } from "../../src/zod-migration";
 import {
   assertPathsEqual,
   createTestMigrator,
   testBasePersonSchema,
 } from "../utils";
-import { z } from "zod";
-import {
-  IsZodMigratorValid,
-  mutators,
-  ZodMigratorCurrentShape,
-} from "../../src";
-import { createZodMigrations } from "../../src/zod-migration";
-import { Simplify } from "type-fest";
 
 describe("mutator.up", () => {
   it("should migrate the nested schema in the up function", () => {
@@ -325,32 +320,4 @@ describe("full transform tests", () => {
       cheese: "cheddar",
     });
   });
-});
-
-describe.skip("Type Tests", () => {
-  const currentSchema = testBasePersonSchema.extend({
-    nested: testBasePersonSchema,
-  });
-
-  const nestedMigrator = createZodMigrations({
-    startingSchema: testBasePersonSchema,
-    endingSchema: testBasePersonSchema,
-  });
-
-  const migrator = createZodMigrations({
-    startingSchema: testBasePersonSchema,
-    endingSchema: currentSchema,
-  }).addNested({
-    path: "nested",
-    currentSchema: testBasePersonSchema,
-    defaultStartingVal: {
-      age: 0,
-      name: "",
-    },
-    nestedMigrator,
-  });
-
-  function isValid(): true {
-    return true as IsZodMigratorValid<typeof migrator>;
-  }
 });
