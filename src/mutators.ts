@@ -42,7 +42,121 @@ const add = <
   } satisfies Mutator<Shape, ReturnType<typeof up>>;
 };
 
-const removeOne = <Shape extends object, Path extends keyof Shape>(
+const addNestedArray = <
+  Shape extends FillableObject,
+  Schema extends ZodSchema,
+  Path extends string,
+  Migrator extends ZodMigrations<any, any, any>
+>({
+  path,
+  currentSchema: schema,
+  nestedMigrator,
+}: {
+  path: Path;
+  currentSchema: Schema;
+  nestedMigrator: Migrator;
+}) => {
+  const up = ({ input }: { input: Shape }) => {
+    if (!Array.isArray((input as any)[path])) {
+      return addProp(input, path, [] as ZodMigratorEndShape<Migrator>[]);
+    } else {
+      return merge(input, {
+        [path]: (input as any)[path].map(nestedMigrator.transform),
+      } as Shape & ObjectWith<Path, ZodMigratorEndShape<Migrator>[]>);
+    }
+  };
+
+  return {
+    tag: "addNestedArray",
+    up,
+    // @ts-ignore
+    isValid: ({ input, renames }) => {
+      return getAllValidRenames(renames, path).some((rename) => {
+        const atPath = (input as any)[rename];
+        if (Array.isArray(atPath)) {
+          if (atPath.length === 0) return true;
+          return atPath.every((val) => {
+            try {
+              // @ts-ignore
+              return isValid(nestedMigrator.transform(val), schema);
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (_e) {
+              return false;
+            }
+          });
+        } else {
+          return false;
+        }
+      });
+    },
+    rewritePaths: (input) => [...input, { path, schema, nestedMigrator }],
+    beforeMutate: ({ paths }) => {
+      if (paths.find((pathData) => pathData.path === path))
+        throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
+    nestedMigrator: {
+      migrator: nestedMigrator,
+      path,
+      type: "array",
+    },
+    rewriteRenames: defaultRewriteRenames,
+  } satisfies Mutator<Shape, ReturnType<typeof up>>;
+};
+
+const addNestedPath = <
+  Shape extends FillableObject,
+  Migrator extends ZodMigrations<any, any, any>,
+  Schema extends ZShape<ZodMigratorEndShape<Migrator>>,
+  Path extends string
+>({
+  path,
+  currentSchema,
+  defaultStartingVal,
+  nestedMigrator,
+}: {
+  path: Path;
+  defaultStartingVal: ZodMigratorStartShape<Migrator>;
+  currentSchema: Schema;
+  nestedMigrator: ZodMigrations<any, any, any>;
+}) => {
+  const up = ({ input }: { input: Shape }) => {
+    return addProp(
+      input,
+      path,
+      nestedMigrator.transform((input as any)?.[path] ?? defaultStartingVal)
+    ) as Shape & ObjectWith<Path, z.infer<typeof currentSchema>>;
+  };
+
+  return {
+    tag: "addNested",
+    up,
+    // @ts-ignore
+    isValid: ({ input }) => {
+      try {
+        return isValid(nestedMigrator.transform(input?.[path]), currentSchema);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        return false;
+      }
+    },
+    rewritePaths: (input) => [
+      ...input,
+      { path, schema: currentSchema, nestedMigrator },
+    ],
+    beforeMutate: ({ paths }) => {
+      if (paths.find((pathData) => pathData.path === path))
+        throw new Error(`'${path}' already exists in your JsonEvolver`);
+    },
+    nestedMigrator: {
+      migrator: nestedMigrator,
+      path,
+      type: "object",
+    },
+    rewriteRenames: defaultRewriteRenames,
+  } satisfies Mutator<Shape, ReturnType<typeof up>>;
+};
+
+const removeOne = <Shape extends FillableObject, Path extends keyof Shape>(
   path: Path
 ) => {
   const up = (input: Shape) => {
