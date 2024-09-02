@@ -1,6 +1,6 @@
 {
   "name": "zod-migrations",
-  "version": "0.1.02",
+  "version": "0.1.21",
   "description": "It's like migrations on databases, but for your zod schemas. Now as your types change you will be able to parse any previous version of that type into the newest version",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
