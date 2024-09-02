@@ -2,7 +2,8 @@
 import type { ZodMigrations } from "../zod-migration";
 import { ZodObject, ZodSchema } from "zod";
 import { Equals } from "./Equals";
-import { Merge, Simplify, Writable } from "type-fest";
+import { Merge, SetOptional, Simplify, Writable } from "type-fest";
+import { ObjectWith } from "./ObjectWith";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type FillableObject = Merge<{}, {}>;
@@ -100,3 +101,18 @@ export type GetNullOrOptionalValue<
   : IsOptional extends true
   ? T | undefined
   : T;
+
+export type AddNestedReturnType<
+  CurrentShape,
+  AtValue,
+  Path extends string,
+  IsNullable extends boolean | undefined,
+  IsOptional extends boolean | undefined
+> = CurrentShape &
+  (IsOptional extends true
+    ? IsNullable extends false
+      ? SetOptional<ObjectWith<Path, AtValue>, Path>
+      : SetOptional<ObjectWith<Path, AtValue | null>, Path>
+    : IsNullable extends true
+    ? ObjectWith<Path, AtValue | null>
+    : ObjectWith<Path, AtValue>);

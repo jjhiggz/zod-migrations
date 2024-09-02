@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodObject, ZodSchema } from "zod";
 import type {
+  AddNestedReturnType,
   FillableObject,
-  GetNullOrOptionalValue,
   Mutator,
   PathData,
   RenameOutput,
@@ -165,11 +165,13 @@ export class ZodMigrations<
     isOptional?: IsOptional;
   }) => {
     return this.registerMutator<
-      CurrentShape &
-        ObjectWith<
-          Path,
-          GetNullOrOptionalValue<z.infer<S>, IsNullable, IsOptional>
-        >
+      AddNestedReturnType<
+        CurrentShape,
+        z.infer<S>,
+        Path,
+        IsNullable,
+        IsOptional
+      >
     >(
       // @ts-ignore
       () => {
