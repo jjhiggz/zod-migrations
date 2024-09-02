@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { z, ZodObject, ZodSchema, type AnyZodObject } from "zod";
+
 import type {
   FillableObject,
   Mutator,
@@ -171,18 +172,22 @@ const addNestedPath = <
   currentSchema,
   defaultStartingVal,
   nestedMigrator,
+  isNullable = false,
+  isOptional = false,
 }: {
   path: Path;
   defaultStartingVal: ZodMigratorStartShape<Migrator>;
   currentSchema: Schema;
   nestedMigrator: ZodMigrations<any, any, any>;
+  isNullable?: boolean;
+  isOptional?: boolean;
 }) => {
   const up = ({ input }: { input: Shape }) => {
     return addProp(
       input,
       path,
       nestedMigrator.transform((input as any)?.[path] ?? defaultStartingVal)
-    );
+    ) as Shape & ObjectWith<Path, z.infer<typeof currentSchema>>;
   };
 
   return {
@@ -191,6 +196,8 @@ const addNestedPath = <
     // @ts-ignore
     isValid: ({ input }) => {
       try {
+        if (isNullable && input?.[path] === null) return true;
+        if (isOptional && input?.[path] === undefined) return true;
         return isValid(nestedMigrator.transform(input?.[path]), currentSchema);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {

@@ -88,3 +88,15 @@ export type RenameOutput<
   },
   Source
 >;
+
+export type GetNullOrOptionalValue<
+  T,
+  IsNullable extends boolean | undefined,
+  IsOptional extends boolean | undefined
+> = IsNullable extends true
+  ? IsOptional extends true
+    ? T | null | undefined
+    : T | null
+  : IsOptional extends true
+  ? T | undefined
+  : T;
