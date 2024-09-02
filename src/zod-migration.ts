@@ -3,6 +3,7 @@
 import { z, ZodObject, ZodSchema } from "zod";
 import type {
   FillableObject,
+  GetNullOrOptionalValue,
   Mutator,
   PathData,
   RenameOutput,
@@ -145,19 +146,31 @@ export class ZodMigrations<
   addNested = <
     S extends ZShape<ZodMigratorEndShape<Migrator>>,
     Path extends string,
-    Migrator extends ZodMigrations<any, any, any>
+    Migrator extends ZodMigrations<any, any, any>,
+    IsNullable extends boolean | undefined = false,
+    IsOptional extends boolean | undefined = false
   >({
     path,
     currentSchema,
     defaultStartingVal,
     nestedMigrator,
+    isNullable = false,
+    isOptional = false,
   }: {
     path: Path;
     defaultStartingVal: ZodMigratorStartShape<Migrator>;
     currentSchema: S;
     nestedMigrator: Migrator;
+    isNullable?: IsNullable;
+    isOptional?: IsOptional;
   }) => {
-    return this.registerMutator<CurrentShape & ObjectWith<Path, z.infer<S>>>(
+    return this.registerMutator<
+      CurrentShape &
+        ObjectWith<
+          Path,
+          GetNullOrOptionalValue<z.infer<S>, IsNullable, IsOptional>
+        >
+    >(
       // @ts-ignore
       () => {
         return mutators.addNestedPath({
@@ -165,6 +178,8 @@ export class ZodMigrations<
           currentSchema,
           defaultStartingVal: defaultStartingVal,
           nestedMigrator,
+          isNullable,
+          isOptional,
         });
       }
     );

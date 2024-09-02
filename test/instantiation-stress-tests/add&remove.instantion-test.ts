@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Equals } from "../../src/types/Equals";
 import { ZodMigratorEndShape } from "../../src/types/types";
-import { createJsonEvolver } from "../../src";
+import { createZodMigrations } from "../../src";
 
 export const dumbSchema = z.object({
   field1: z.string(),
@@ -116,7 +116,7 @@ export const dumbSchema = z.object({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dumbEvoSchema = createJsonEvolver({
+const dumbEvoSchema = createZodMigrations({
   startingSchema: z.object({}),
   endingSchema: dumbSchema,
 })
